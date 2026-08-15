@@ -1,0 +1,8 @@
+node_modules/
+dist/
+target/
+*.log
+.env
+.DS_Store
+src-tauri/binaries/*.exe
+src-tauri/binaries/one-api-*

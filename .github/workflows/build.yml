@@ -1,0 +1,47 @@
+name: Build AI War Room
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Download One API binary
+        run: |
+          $url = "https://github.com/songquanpeng/one-api/releases/download/v0.6.10/one-api.exe"
+          $dest = "src-tauri/binaries/one-api-x86_64-pc-windows-msvc.exe"
+          New-Item -ItemType Directory -Force -Path "src-tauri/binaries"
+          Invoke-WebRequest -Uri $url -OutFile $dest
+          Write-Host "Downloaded One API to $dest"
+          (Get-Item $dest).Length
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'AI作战室 ${{ github.ref_name }}'
+          releaseBody: 'AI作战室桌面端安装包'
+          releaseDraft: false
+          prerelease: false
