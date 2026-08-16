@@ -93,10 +93,19 @@ fn kill_existing_gateway(app: &tauri::AppHandle) {
 fn open_in_browser(url: &str) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", url])
-            .spawn()
-            .map_err(|e| format!("打开浏览器失败: {}", e))?;
+        // 方法1: explorer.exe（最可靠，不弹黑框）
+        match std::process::Command::new("explorer").arg(url).spawn() {
+            Ok(_) => return Ok(()),
+            Err(e1) => {
+                // 方法2: cmd /C start 兜底
+                match std::process::Command::new("cmd")
+                    .args(["/C", "start", "", url])
+                    .spawn() {
+                    Ok(_) => return Ok(()),
+                    Err(e2) => return Err(format!("打开浏览器失败: explorer={}, cmd={}", e1, e2)),
+                }
+            }
+        }
     }
     #[cfg(target_os = "macos")]
     {
@@ -112,6 +121,7 @@ fn open_in_browser(url: &str) -> Result<(), String> {
             .spawn()
             .map_err(|e| format!("打开浏览器失败: {}", e))?;
     }
+    #[allow(unreachable_code)]
     Ok(())
 }
 
@@ -252,9 +262,20 @@ fn open_dashboard(app: tauri::AppHandle) -> Result<(), String> {
     } else {
         "http://localhost:3000".to_string()
     };
+    let app_data = app.path().app_data_dir().unwrap_or_default();
+    log_to_file(&app_data, &format!("打开管理面板: {}", url));
     // 先尝试启动网关（如果没启动）
     let _ = start_gateway_internal(&app);
-    open_in_browser(&url)
+    match open_in_browser(&url) {
+        Ok(()) => {
+            log_to_file(&app_data, "浏览器已打开");
+            Ok(())
+        }
+        Err(e) => {
+            log_to_file(&app_data, &format!("打开浏览器失败: {}", e));
+            Err(e)
+        }
+    }
 }
 
 #[tauri::command]
