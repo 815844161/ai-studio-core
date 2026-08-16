@@ -92,6 +92,59 @@
     border-top: 1px solid #21262d;
   }
   .footer a { color: #58a6ff; text-decoration: none; }
+
+  /* ===== Onboarding Wizard ===== */
+  #onboard-wizard {
+    position: fixed; inset: 0; z-index: 500; display: none;
+    background: rgba(13,17,23,0.92); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center;
+  }
+  #onboard-wizard.show { display: flex; }
+  .wiz-card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 16px;
+    padding: 36px 32px; width: 420px; max-width: 92vw;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+  .wiz-step { display: none; }
+  .wiz-step.active { display: block; }
+  .wiz-icon { font-size: 40px; text-align: center; margin-bottom: 12px; }
+  .wiz-title { color: #e6edf3; font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 8px; }
+  .wiz-desc { color: #8b949e; font-size: 13px; text-align: center; margin-bottom: 24px; line-height: 1.6; }
+  .wiz-input {
+    width: 100%; padding: 11px 14px; background: #0d1117; border: 1px solid #30363d;
+    border-radius: 8px; color: #e6edf3; font-size: 14px; margin-bottom: 6px; outline: none;
+    transition: border-color .2s;
+  }
+  .wiz-input:focus { border-color: #00d4ff; }
+  .wiz-error { color: #f85149; font-size: 12px; min-height: 18px; margin-bottom: 8px; }
+  .wiz-btn {
+    width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: 14px;
+    cursor: pointer; font-weight: 500; transition: all .2s; margin-top: 4px;
+  }
+  .wiz-btn-primary { background: #1f6feb; color: #fff; }
+  .wiz-btn-primary:hover { background: #388bfd; }
+  .wiz-btn-primary:disabled { background: #21262d; color: #6e7681; cursor: not-allowed; }
+  .wiz-btn-skip {
+    background: transparent; color: #8b949e; font-size: 13px; width: auto;
+    margin-top: 12px; padding: 6px 12px;
+  }
+  .wiz-btn-skip:hover { color: #c9d1d9; }
+  .wiz-skip-row { text-align: center; }
+  .wiz-hint {
+    background: #0d1117; border: 1px solid #21262d; border-radius: 8px;
+    padding: 10px 14px; font-size: 12px; color: #8b949e; margin-bottom: 18px; line-height: 1.7;
+  }
+  .wiz-hint a { color: #00d4ff; }
+  .wiz-success { text-align: center; }
+  .wiz-success .check { font-size: 56px; margin-bottom: 12px; }
+  .pwd-wrap { position: relative; }
+  .pwd-wrap .wiz-input { padding-right: 42px; }
+  .eye-btn {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-60%);
+    background: none; border: none; cursor: pointer; font-size: 16px; opacity: .6;
+  }
+  .eye-btn:hover { opacity: 1; }
+
 </style>
 </head>
 <body>
@@ -162,6 +215,53 @@
   </div>
 </div>
 
+<div id="onboard-wizard">
+  <div class="wiz-card">
+    <!-- Step 1: Change password -->
+    <div class="wiz-step active" id="wiz-step-pwd">
+      <div class="wiz-icon">🔐</div>
+      <div class="wiz-title">设置管理员密码</div>
+      <div class="wiz-desc">当前是默认密码，为保障安全请先修改。</div>
+      <div class="pwd-wrap">
+        <input type="password" class="wiz-input" id="wiz-new-pwd" placeholder="新密码（至少6位）" autocomplete="new-password" />
+        <button class="eye-btn" onclick="wizTogglePwd('wiz-new-pwd',this)">👁</button>
+      </div>
+      <div class="pwd-wrap">
+        <input type="password" class="wiz-input" id="wiz-confirm-pwd" placeholder="再次输入新密码" autocomplete="new-password" />
+      </div>
+      <div class="wiz-error" id="wiz-pwd-err"></div>
+      <button class="wiz-btn wiz-btn-primary" id="wiz-pwd-btn" onclick="wizChangePwd()">修改密码并继续</button>
+    </div>
+
+    <!-- Step 2: DeepSeek key -->
+    <div class="wiz-step" id="wiz-step-key">
+      <div class="wiz-icon">⚡</div>
+      <div class="wiz-title">配置 DeepSeek（推荐）</div>
+      <div class="wiz-desc">粘贴你的 API Key，开箱即用 V4 Pro + V4 Flash。</div>
+      <div class="wiz-hint">
+        没有 Key？前往 <strong>platform.deepseek.com</strong> 注册获取。<br/>
+        这一步可以跳过，之后在管理面板手动添加。
+      </div>
+      <div class="pwd-wrap">
+        <input type="password" class="wiz-input" id="wiz-ds-key" placeholder="sk-xxxxxxxxxxxxxxxx" autocomplete="off" />
+        <button class="eye-btn" onclick="wizTogglePwd('wiz-ds-key',this)">👁</button>
+      </div>
+      <div class="wiz-error" id="wiz-key-err"></div>
+      <button class="wiz-btn wiz-btn-primary" id="wiz-key-btn" onclick="wizSetupDS()">配置并开始使用</button>
+      <div class="wiz-skip-row"><button class="wiz-btn wiz-btn-skip" onclick="wizSkipKey()">暂时跳过</button></div>
+    </div>
+
+    <!-- Step 3: Done -->
+    <div class="wiz-step" id="wiz-step-done">
+      <div class="wiz-success">
+        <div class="check">✅</div>
+        <div class="wiz-title">配置完成</div>
+        <div class="wiz-desc">点击"打开管理面板"开始使用 AI 作战室。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   const { invoke } = window.__TAURI__.core;
   const { listen } = window.__TAURI__.event;
@@ -194,6 +294,7 @@
     gatewayUrl.textContent = currentUrl;
     setStatus('running', '运行中');
     show(readyView);
+    wizMaybeStart();
   }
 
   function onError(msg) {
@@ -235,6 +336,130 @@
     });
   }
   window.openLogDir = openLogDir;
+
+  // ===== Onboarding Wizard =====
+  let wizToken = '';
+  let wizPort = 3000;
+  window.wizTogglePwd = function(id, btn) {
+    const inp = document.getElementById(id);
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+  };
+
+  function wizShow(stepId) {
+    document.querySelectorAll('.wiz-step').forEach(s => s.classList.remove('active'));
+    document.getElementById(stepId).classList.add('active');
+  }
+
+  async function wizCheckDefaultPwd() {
+    try {
+      const port = await invoke('get_gateway_port');
+      wizPort = port || 3000;
+      const resp = await fetch(`http://127.0.0.1:${wizPort}/api/user/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'root', password: '123456' })
+      });
+      const data = await resp.json();
+      if (data.success) {
+        wizToken = data.data;
+        return true;
+      }
+      return false;
+    } catch(e) { return false; }
+  }
+
+  window.wizChangePwd = async function() {
+    const p1 = document.getElementById('wiz-new-pwd').value;
+    const p2 = document.getElementById('wiz-confirm-pwd').value;
+    const err = document.getElementById('wiz-pwd-err');
+    const btn = document.getElementById('wiz-pwd-btn');
+    err.textContent = '';
+    if (!p1 || p1.length < 6) { err.textContent = '密码至少6位'; return; }
+    if (p1 !== p2) { err.textContent = '两次密码不一致'; return; }
+    if (p1 === '123456') { err.textContent = '不能与默认密码相同'; return; }
+    btn.disabled = true; btn.textContent = '修改中...';
+    try {
+      if (!wizToken) {
+        const lr = await fetch(`http://127.0.0.1:${wizPort}/api/user/login`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'root', password: '123456' })
+        });
+        const ld = await lr.json();
+        if (ld.success) wizToken = ld.data;
+      }
+      const resp = await fetch(`http://127.0.0.1:${wizPort}/api/user/self`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${wizToken}` },
+        body: JSON.stringify({ password: p1 })
+      });
+      const data = await resp.json();
+      if (!data.success) throw new Error(data.message || '修改失败');
+      // re-login
+      const rr = await fetch(`http://127.0.0.1:${wizPort}/api/user/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'root', password: p1 })
+      });
+      const rd = await rr.json();
+      if (rd.success) wizToken = rd.data;
+      localStorage.setItem('aiwarroom_onboarded', 'true');
+      wizShow('wiz-step-key');
+    } catch(e) {
+      err.textContent = e.message || '操作失败，请重试';
+    } finally {
+      btn.disabled = false; btn.textContent = '修改密码并继续';
+    }
+  };
+
+  window.wizSetupDS = async function() {
+    const key = document.getElementById('wiz-ds-key').value.trim();
+    const err = document.getElementById('wiz-key-err');
+    const btn = document.getElementById('wiz-key-btn');
+    err.textContent = '';
+    if (!key || !key.startsWith('sk-')) { err.textContent = '请输入有效的 sk- 开头 Key'; return; }
+    btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;vertical-align:middle"></span> 配置中...';
+    try {
+      const base = `http://127.0.0.1:${wizPort}`;
+      const channels = [
+        { name: 'DeepSeek V4 Pro', models: 'deepseek-v4-pro' },
+        { name: 'DeepSeek V4 Flash', models: 'deepseek-v4-flash' }
+      ];
+      let ok = 0;
+      for (const ch of channels) {
+        const r = await fetch(`${base}/api/channel`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${wizToken}` },
+          body: JSON.stringify({
+            type: 1, key, name: ch.name, base_url: 'https://api.deepseek.com/v1',
+            models: ch.models, model_mapping: '', groups: ['default'], config: '{}'
+          })
+        });
+        const d = await r.json();
+        if (d.success) ok++;
+      }
+      if (ok === 0) throw new Error('渠道创建失败，请检查 Key');
+      localStorage.setItem('aiwarroom_onboarded', 'done');
+      wizShow('wiz-step-done');
+    } catch(e) {
+      err.textContent = e.message || '配置失败，可稍后在面板设置';
+    } finally {
+      btn.disabled = false; btn.textContent = '配置并开始使用';
+    }
+  };
+
+  window.wizSkipKey = function() {
+    localStorage.setItem('aiwarroom_onboarded', 'done');
+    wizShow('wiz-step-done');
+  };
+
+  async function wizMaybeStart() {
+    if (localStorage.getItem('aiwarroom_onboarded') === 'done') return;
+    const isDefault = await wizCheckDefaultPwd();
+    if (isDefault) {
+      document.getElementById('onboard-wizard').classList.add('show');
+      wizShow('wiz-step-pwd');
+    } else {
+      localStorage.setItem('aiwarroom_onboarded', 'done');
+    }
+  }
+
 
   async function init() {
     // 版本号
