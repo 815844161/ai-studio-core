@@ -1,6 +1,6 @@
 [package]
 name = "ai-war-room"
-version = "0.1.0"
+version = "0.2.0"
 description = "AI作战室 - 多模型AI网关桌面端"
 authors = ["小理"]
 edition = "2021"
