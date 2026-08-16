@@ -1,6 +1,6 @@
 [package]
 name = "ai-war-room"
-version = "0.2.1"
+version = "0.3.0"
 description = "AI作战室 - 本地AI网关桌面应用"
 authors = ["you"]
 edition = "2021"
