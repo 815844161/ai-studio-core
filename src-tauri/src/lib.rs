@@ -1,4 +1,4 @@
-use tauri::{Emitter, Manager, WindowEvent, tray::{TrayIconBuilder, MouseButton, MouseButtonState}};
+use tauri::{Emitter, Manager, WindowEvent, WebviewUrl, WebviewWindowBuilder, tray::{TrayIconBuilder, MouseButton, MouseButtonState}};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 use std::sync::atomic::{AtomicU16, AtomicBool, AtomicU8, Ordering};
@@ -23,7 +23,6 @@ impl Drop for GatewayChild {
     }
 }
 
-/// 优先使用3000端口，被占用则找可用端口
 fn find_gateway_port() -> u16 {
     if std::net::TcpListener::bind("127.0.0.1:3000").is_ok() {
         return 3000;
@@ -89,18 +88,14 @@ fn kill_existing_gateway(app: &tauri::AppHandle) {
     }
 }
 
-/// 用系统默认浏览器打开URL
 fn open_in_browser(url: &str) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        // 方法1: explorer.exe（最可靠，不弹黑框）
         match std::process::Command::new("explorer").arg(url).spawn() {
             Ok(_) => return Ok(()),
             Err(e1) => {
-                // 方法2: cmd /C start 兜底
                 match std::process::Command::new("cmd")
-                    .args(["/C", "start", "", url])
-                    .spawn() {
+                    .args(["/C", "start", "", url]).spawn() {
                     Ok(_) => return Ok(()),
                     Err(e2) => return Err(format!("打开浏览器失败: explorer={}, cmd={}", e1, e2)),
                 }
@@ -109,16 +104,12 @@ fn open_in_browser(url: &str) -> Result<(), String> {
     }
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open")
-            .arg(url)
-            .spawn()
+        std::process::Command::new("open").arg(url).spawn()
             .map_err(|e| format!("打开浏览器失败: {}", e))?;
     }
     #[cfg(target_os = "linux")]
     {
-        std::process::Command::new("xdg-open")
-            .arg(url)
-            .spawn()
+        std::process::Command::new("xdg-open").arg(url).spawn()
             .map_err(|e| format!("打开浏览器失败: {}", e))?;
     }
     #[allow(unreachable_code)]
@@ -168,7 +159,6 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
         if let Ok(mut guard) = state.0.lock() { *guard = Some(child); }
     }
 
-    // 监听sidecar输出
     let app_h = app.clone();
     let ad = app_data.clone();
     tauri::async_runtime::spawn(async move {
@@ -219,7 +209,6 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
         }
     });
 
-    // 端口就绪检测
     let ah2 = app.clone();
     let ad2 = app_data.clone();
     std::thread::spawn(move || {
@@ -254,28 +243,56 @@ fn get_app_version(app: tauri::AppHandle) -> String {
     app.package_info().version.to_string()
 }
 
-#[tauri::command]
-fn open_dashboard(app: tauri::AppHandle) -> Result<(), String> {
+fn dashboard_url() -> String {
     let port = GATEWAY_PORT.load(Ordering::SeqCst);
-    let url = if port > 0 {
+    if port > 0 {
         format!("http://127.0.0.1:{}", port)
     } else {
-        "http://localhost:3000".to_string()
-    };
+        "http://127.0.0.1:3000".to_string()
+    }
+}
+
+/// 在Tauri内嵌窗口中打开管理面板
+fn open_dashboard_window(app: &tauri::AppHandle) -> Result<(), String> {
+    let url = dashboard_url();
     let app_data = app.path().app_data_dir().unwrap_or_default();
-    log_to_file(&app_data, &format!("打开管理面板: {}", url));
-    // 先尝试启动网关（如果没启动）
-    let _ = start_gateway_internal(&app);
-    match open_in_browser(&url) {
-        Ok(()) => {
-            log_to_file(&app_data, "浏览器已打开");
+    log_to_file(&app_data, &format!("打开管理面板(内嵌): {}", url));
+
+    // 如果窗口已存在，直接聚焦
+    if let Some(existing) = app.get_webview_window("dashboard") {
+        let _ = existing.show();
+        let _ = existing.set_focus();
+        log_to_file(&app_data, "管理面板窗口已存在，已聚焦");
+        return Ok(());
+    }
+
+    // 创建新窗口
+    let url_parsed: tauri::Url = url.parse().map_err(|e| format!("URL解析失败: {}", e))?;
+    match WebviewWindowBuilder::new(app, "dashboard", WebviewUrl::External(url_parsed))
+        .title("AI作战室 - 管理面板")
+        .inner_size(1200.0, 800.0)
+        .min_inner_size(900.0, 600.0)
+        .resizable(true)
+        .center()
+        .build()
+    {
+        Ok(_) => {
+            log_to_file(&app_data, "管理面板内嵌窗口已创建");
             Ok(())
         }
         Err(e) => {
-            log_to_file(&app_data, &format!("打开浏览器失败: {}", e));
-            Err(e)
+            // 内嵌窗口失败，回退到系统浏览器
+            log_to_file(&app_data, &format!("内嵌窗口创建失败，回退浏览器: {}", e));
+            let _ = start_gateway_internal(app);
+            open_in_browser(&url).map_err(|e2| format!("内嵌失败({})，浏览器也失败: {}", e, e2))
         }
     }
+}
+
+#[tauri::command]
+fn open_dashboard(app: tauri::AppHandle) -> Result<(), String> {
+    let _ = start_gateway_internal(&app);
+    open_dashboard_window(&app)
 }
 
 #[tauri::command]
@@ -308,8 +325,11 @@ pub fn run() {
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                let _ = window.hide();
-                api.prevent_close();
+                // 主窗口关闭时最小化到托盘；dashboard窗口直接关闭
+                if window.label() == "main" {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
             }
         })
         .setup(|app| {
@@ -332,9 +352,7 @@ pub fn run() {
                         if let Some(w) = app.get_webview_window("main") { let _ = w.show(); let _ = w.set_focus(); }
                     }
                     "dashboard" => {
-                        let port = GATEWAY_PORT.load(Ordering::SeqCst);
-                        let url = if port > 0 { format!("http://127.0.0.1:{}", port) } else { "http://localhost:3000".to_string() };
-                        let _ = open_in_browser(&url);
+                        let _ = open_dashboard_window(app);
                     }
                     "restart" => {
                         SUPPRESS_RESTART.store(true, Ordering::SeqCst);
