@@ -6,212 +6,283 @@
 <title>AI作战室</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #0d1117; }
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #0d1117; color: #e6edf3; }
 
-  #splash {
-    position: fixed; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; z-index: 100;
-    background: linear-gradient(135deg, #0d1117 0%, #1a2332 50%, #0d1117 100%);
-    transition: opacity 0.4s ease;
+  .app { display: flex; flex-direction: column; height: 100vh; }
+
+  /* 顶部栏 */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; background: #161b22; border-bottom: 1px solid #21262d;
+    -webkit-app-region: drag;
   }
-  #splash.hidden { opacity: 0; pointer-events: none; }
-
-  .logo-container {
-    width: 96px; height: 96px; border-radius: 22px;
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 36px; height: 36px; border-radius: 10px;
     background: linear-gradient(135deg, #1a2332, #243044);
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15);
-    margin-bottom: 28px;
-    animation: pulse 2s ease-in-out infinite;
+    box-shadow: 0 4px 16px rgba(0, 212, 255, 0.15);
   }
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15); }
-    50% { box-shadow: 0 8px 48px rgba(0, 212, 255, 0.3); }
-  }
-  .logo-dots { display: flex; gap: 8px; }
-  .logo-dots span {
-    width: 12px; height: 12px; border-radius: 50%;
-    background: #00d4ff; animation: bounce 1.4s ease-in-out infinite;
-  }
-  .logo-dots span:nth-child(2) { animation-delay: 0.2s; }
-  .logo-dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce {
-    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-    40% { transform: scale(1); opacity: 1; }
-  }
+  .logo svg { width: 20px; height: 20px; }
+  .app-name { font-size: 16px; font-weight: 600; letter-spacing: 1px; }
+  .app-ver { font-size: 11px; color: #484f58; font-family: Consolas, monospace; margin-left: 4px; }
 
-  .app-title { color: #e6edf3; font-size: 22px; font-weight: 600; margin-bottom: 8px; letter-spacing: 2px; }
-  .app-subtitle { color: #7d8590; font-size: 13px; margin-bottom: 32px; }
-  .status-bar { display: flex; align-items: center; gap: 8px; color: #7d8590; font-size: 13px; }
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 20px; font-size: 12px;
+    background: #21262d; border: 1px solid #30363d;
+    -webkit-app-region: no-drag;
+  }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #f85149; }
+  .status-pill.running .status-dot { background: #3fb950; box-shadow: 0 0 8px #3fb950; }
+  .status-pill.starting .status-dot { background: #d29922; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0.3; } }
+
+  /* 主内容 */
+  .main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px; }
+  .card {
+    background: #161b22; border: 1px solid #21262d; border-radius: 16px;
+    padding: 40px; max-width: 480px; width: 100%; text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .card-icon { font-size: 48px; margin-bottom: 16px; }
+  .card-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  .card-desc { color: #7d8590; font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+
+  .port-display {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
+    padding: 10px 20px; font-family: Consolas, monospace; font-size: 15px;
+    color: #00d4ff; margin-bottom: 24px;
+  }
+  .port-label { color: #484f58; font-size: 12px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 28px; border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 500; cursor: pointer;
+    transition: all 0.2s; text-decoration: none;
+  }
+  .btn-primary { background: #238636; color: #fff; }
+  .btn-primary:hover { background: #2ea043; transform: translateY(-1px); }
+  .btn-secondary { background: #21262d; color: #e6edf3; border: 1px solid #30363d; }
+  .btn-secondary:hover { background: #30363d; }
+  .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  /* 启动中动画 */
+  .starting { display: none; }
+  .starting.show { display: block; }
+  .ready { display: none; }
+  .ready.show { display: block; }
+  .error-box { display: none; }
+  .error-box.show { display: block; }
+
   .spinner {
-    width: 16px; height: 16px; border: 2px solid #21262d;
+    width: 32px; height: 32px; border: 3px solid #21262d;
     border-top-color: #00d4ff; border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+    animation: spin 0.8s linear infinite; margin: 0 auto 20px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .version-tag {
-    position: fixed; bottom: 16px; right: 20px;
-    color: #484f58; font-size: 12px; z-index: 150;
-    font-family: "Consolas", monospace;
-  }
+  .error-msg { color: #f85149; font-size: 13px; margin-bottom: 16px; word-break: break-all; }
 
-  #error-screen {
-    position: fixed; inset: 0; display: none; flex-direction: column;
-    align-items: center; justify-content: center; z-index: 200;
-    background: #0d1117; color: #e6edf3; padding: 40px; text-align: center;
+  /* 底部信息 */
+  .footer {
+    padding: 12px 24px; text-align: center; color: #484f58; font-size: 11px;
+    border-top: 1px solid #21262d;
   }
-  #error-screen.show { display: flex; }
-  .error-icon { font-size: 48px; margin-bottom: 16px; }
-  .error-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #f85149; }
-  .error-msg { color: #7d8590; font-size: 14px; max-width: 400px; line-height: 1.6; margin-bottom: 24px; }
-  .retry-btn {
-    padding: 10px 28px; background: #238636; color: #fff; border: none;
-    border-radius: 8px; font-size: 14px; cursor: pointer; transition: background 0.2s;
-  }
-  .retry-btn:hover { background: #2ea043; }
-
-  #gateway-frame {
-    width: 100%; height: 100%; border: none; display: none; background: #fff;
-  }
-  #gateway-frame.show { display: block; }
+  .footer a { color: #58a6ff; text-decoration: none; }
 </style>
 </head>
 <body>
-
-<div id="splash">
-  <div class="logo-container">
-    <div class="logo-dots"><span></span><span></span><span></span></div>
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="10" rx="2"/>
+          <circle cx="12" cy="16" r="1"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <span class="app-name">AI作战室</span>
+      <span class="app-ver" id="app-ver"></span>
+    </div>
+    <div class="status-pill starting" id="status-pill">
+      <span class="status-dot"></span>
+      <span id="status-text">启动中...</span>
+    </div>
   </div>
-  <div class="app-title">AI作战室</div>
-  <div class="app-subtitle">多模型AI网关 · 本地部署</div>
-  <div class="status-bar">
-    <div class="spinner"></div>
-    <span id="status-text">正在启动网关服务...</span>
+
+  <div class="main">
+    <div class="card">
+      <!-- 启动中 -->
+      <div class="starting show" id="starting-view">
+        <div class="spinner"></div>
+        <div class="card-title">正在启动网关服务</div>
+        <div class="card-desc">首次启动需要初始化数据库，请稍候...</div>
+      </div>
+
+      <!-- 就绪 -->
+      <div class="ready" id="ready-view">
+        <div class="card-icon">🚀</div>
+        <div class="card-title">网关运行中</div>
+        <div class="card-desc">One API 网关已就绪，点击下方按钮打开管理面板。</div>
+        <div class="port-display">
+          <span class="port-label">地址</span>
+          <span id="gateway-url">http://127.0.0.1:3000</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="open-btn" onclick="openDashboard()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            打开管理面板
+          </button>
+          <button class="btn btn-secondary" onclick="restartGateway()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            重启网关
+          </button>
+        </div>
+      </div>
+
+      <!-- 错误 -->
+      <div class="error-box" id="error-view">
+        <div class="card-icon">⚠️</div>
+        <div class="card-title" style="color:#f85149">网关启动失败</div>
+        <div class="error-msg" id="error-msg">请重启应用或检查日志。</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="location.reload()">重试</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    默认账号 root / 123456 · 登录后请立即修改密码 · 
+    <a href="#" onclick="openLogDir();return false;">查看日志</a>
   </div>
 </div>
-
-<div id="error-screen">
-  <div class="error-icon">⚠️</div>
-  <div class="error-title">网关启动失败</div>
-  <div class="error-msg" id="error-msg">请重启应用或检查日志文件。</div>
-  <button class="retry-btn" onclick="location.reload()">重新启动</button>
-</div>
-
-<iframe id="gateway-frame" src="about:blank"></iframe>
-<div class="version-tag" id="version-tag"></div>
 
 <script type="module">
-  const tauri = window.__TAURI__;
-  const invoke = tauri.core.invoke;
-  const listen = tauri.event.listen;
+  const { invoke } = window.__TAURI__.core;
+  const { listen } = window.__TAURI__.event;
+  const { open } = window.__TAURI__.shell || {};
 
-  const splash = document.getElementById('splash');
-  const frame = document.getElementById('gateway-frame');
-  const errorScreen = document.getElementById('error-screen');
+  const statusPill = document.getElementById('status-pill');
   const statusText = document.getElementById('status-text');
+  const startingView = document.getElementById('starting-view');
+  const readyView = document.getElementById('ready-view');
+  const errorView = document.getElementById('error-view');
+  const gatewayUrl = document.getElementById('gateway-url');
   const errorMsg = document.getElementById('error-msg');
-  const versionTag = document.getElementById('version-tag');
 
-  let readyTimeout;
+  let currentUrl = 'http://127.0.0.1:3000';
 
-  function showError(msg) {
-    errorMsg.textContent = msg;
-    splash.classList.add('hidden');
-    errorScreen.classList.add('show');
+  function show(view) {
+    startingView.classList.remove('show');
+    readyView.classList.remove('show');
+    errorView.classList.remove('show');
+    view.classList.add('show');
   }
 
-  function loadGateway(url) {
-    if (frame.src && frame.src !== 'about:blank') return;
-    statusText.textContent = '网关已就绪，正在加载界面...';
-    frame.src = url;
+  function setStatus(cls, text) {
+    statusPill.className = 'status-pill ' + cls;
+    statusText.textContent = text;
   }
+
+  function onReady(url) {
+    currentUrl = url || currentUrl;
+    gatewayUrl.textContent = currentUrl;
+    setStatus('running', '运行中');
+    show(readyView);
+  }
+
+  function onError(msg) {
+    setStatus('', '已停止');
+    errorMsg.textContent = String(msg || '未知错误');
+    show(errorView);
+  }
+
+  async function openDashboard() {
+    try {
+      await invoke('open_dashboard');
+    } catch(e) {
+      // fallback
+      const a = document.createElement('a');
+      a.href = currentUrl;
+      a.target = '_blank';
+      a.click();
+    }
+  }
+  window.openDashboard = openDashboard;
+
+  async function restartGateway() {
+    setStatus('starting', '重启中...');
+    show(startingView);
+    try {
+      await invoke('restart_gateway');
+    } catch(e) {
+      console.error('restart failed:', e);
+    }
+  }
+  window.restartGateway = restartGateway;
+
+  function openLogDir() {
+    invoke('plugin:dialog|message', {
+      message: '日志文件位置：\n%APPDATA%\\com.aiwarroom.desktop\\logs\\app.log\n\nOne API数据：\n%APPDATA%\\com.aiwarroom.desktop\\gateway\\',
+      title: '日志位置'
+    }).catch(() => {
+      alert('日志：%APPDATA%\\com.aiwarroom.desktop\\logs\\app.log');
+    });
+  }
+  window.openLogDir = openLogDir;
 
   async function init() {
+    // 版本号
     try {
-      // 显示版本号
-      try {
-        const ver = await invoke('get_app_version');
-        versionTag.textContent = 'v' + ver;
-      } catch(e) {}
+      const ver = await invoke('get_app_version');
+      document.getElementById('app-ver').textContent = 'v' + ver;
+    } catch(e) {}
 
-      // 监听网关事件（Rust setup 已自动启动）
-      await listen('gateway-ready', (event) => {
-        clearTimeout(readyTimeout);
-        console.log('[gateway] ready:', event.payload);
-        loadGateway(event.payload);
-      });
+    // 监听事件
+    await listen('gateway-ready', (e) => onReady(e.payload));
+    await listen('gateway-error', (e) => onError(e.payload));
 
-      await listen('gateway-error', (event) => {
-        clearTimeout(readyTimeout);
-        console.error('[gateway] error:', event.payload);
-        showError(String(event.payload));
-      });
-
-      await listen('gateway-stderr', (event) => {
-        const text = String(event.payload);
-        if (text.includes('FATAL') || text.includes('panic')) {
-          showError(text.substring(0, 300));
-        }
-      });
-
-      // 30秒超时
-      readyTimeout = setTimeout(async () => {
-        if (!frame.src || frame.src === 'about:blank') {
-          try {
-            const port = await invoke('get_gateway_port');
-            if (port > 0) {
-              loadGateway(`http://127.0.0.1:${port}`);
-              return;
-            }
-          } catch(e) {}
-          showError('网关启动超时（30秒），请重启应用或检查日志。');
-        }
-      }, 30000);
-
-      // 先尝试获取Rust setup已启动的端口
-      await new Promise(r => setTimeout(r, 800));
-      let port = 0;
-      try { port = await invoke('get_gateway_port'); } catch(e) {}
-
-      if (port > 0) {
-        // 端口已知，轮询HTTP就绪
-        const url = `http://127.0.0.1:${port}`;
-        const checkReady = async () => {
-          try {
-            const resp = await fetch(url);
-            if (resp.ok) {
-              clearTimeout(readyTimeout);
-              loadGateway(url);
-              return;
-            }
-          } catch(e) {}
-          setTimeout(checkReady, 500);
-        };
-        checkReady();
-      } else {
-        // 端口未知（极端情况），invoke幂等启动
+    // 30秒超时
+    setTimeout(async () => {
+      if (!readyView.classList.contains('show') && !errorView.classList.contains('show')) {
         try {
-          const result = await invoke('start_gateway');
-          console.log('[gateway] start result:', result);
-        } catch(e) {
-          console.error('[gateway] invoke failed:', e);
-        }
+          const port = await invoke('get_gateway_port');
+          if (port > 0) {
+            onReady(`http://127.0.0.1:${port}`);
+            return;
+          }
+        } catch(e) {}
+        onError('网关启动超时（30秒），请检查日志后重试。');
       }
-    } catch (err) {
-      console.error('Init failed:', err);
-      showError(String(err));
-    }
-  }
+    }, 30000);
 
-  frame.addEventListener('load', () => {
-    if (frame.src && frame.src !== 'about:blank') {
-      setTimeout(() => {
-        splash.classList.add('hidden');
-        frame.classList.add('show');
-      }, 400);
-    }
-  });
+    // 轮询端口（Rust setup已启动gateway）
+    const checkPort = async () => {
+      try {
+        const port = await invoke('get_gateway_port');
+        if (port > 0) {
+          // HTTP轮询确认就绪
+          const url = `http://127.0.0.1:${port}`;
+          const poll = async () => {
+            try {
+              const resp = await fetch(url);
+              if (resp.ok) { onReady(url); return; }
+            } catch(e) {}
+            setTimeout(poll, 600);
+          };
+          poll();
+          return;
+        }
+      } catch(e) {}
+      setTimeout(checkPort, 800);
+    };
+    checkPort();
+  }
 
   init();
 </script>
