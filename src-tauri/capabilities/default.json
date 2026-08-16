@@ -31,6 +31,7 @@
     "core:webview:default",
     "core:app:default",
     "core:path:default",
-    "core:resources:default"
+    "core:resources:default",
+    "autostart:default"
   ]
 }

@@ -132,13 +132,18 @@
         <div class="card-icon">⚠️</div>
         <div class="card-title" style="color:#f85149">网关启动失败</div>
         <div class="error-msg" id="error-msg">请重启应用或检查日志。</div>
-        <div class="btn-row"><button class="btn btn-primary" onclick="location.reload()">重试</button></div>
+        <div class="error-hint" id="error-hint" style="color:#8b949e;font-size:12px;margin-bottom:16px;line-height:1.6;"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="location.reload()">重试</button>
+          <button class="btn btn-secondary" id="fix-btn" onclick="autoFix()" style="display:none">帮我修</button>
+        </div>
       </div>
     </div>
   </div>
   <div class="footer">
     默认账号 root / 123456 · 登录后请立即修改密码 ·
     <a href="#" onclick="openLogDir();return false;">查看日志</a>
+    <label style="cursor:pointer;margin-left:12px;-webkit-app-region:no-drag;"><input type="checkbox" id="autostart-toggle" onchange="toggleAutostart(this.checked)" style="vertical-align:middle;margin-right:4px;cursor:pointer;" /> 开机自启</label>
   </div>
 </div>
 
@@ -205,13 +210,53 @@
   function show(view) { startingView.classList.remove('show'); readyView.classList.remove('show'); errorView.classList.remove('show'); view.classList.add('show'); }
   function setStatus(cls, text) { statusPill.className = 'status-pill ' + cls; statusText.textContent = text; }
   function onReady(url) { currentUrl = url || currentUrl; gatewayUrl.textContent = currentUrl; setStatus('running','运行中'); show(readyView); wizMaybeStart(); }
-  function onError(msg) { setStatus('','已停止'); errorMsg.textContent = String(msg||'未知错误'); show(errorView); }
+  function onError(msg) {
+    setStatus('','已停止');
+    const raw = String(msg||'未知错误');
+    errorMsg.textContent = raw;
+    const hint = document.getElementById('error-hint');
+    const fixBtn = document.getElementById('fix-btn');
+    hint.textContent = '';
+    fixBtn.style.display = 'none';
+    if (raw.includes('丢失') || raw.includes('重新安装')) {
+      hint.textContent = '网关程序文件缺失，需要重新下载安装包。';
+    } else if (raw.includes('端口') || raw.includes('占用')) {
+      hint.textContent = '其他程序正在使用端口3000，可以尝试重启网关自动换端口。';
+      fixBtn.style.display = 'inline-flex';
+    } else if (raw.includes('崩溃')) {
+      hint.textContent = '网关反复异常退出，可能是数据损坏或杀毒软件拦截。';
+    } else if (raw.includes('超时')) {
+      hint.textContent = '网关启动时间过长，可能是杀毒软件拦截或端口冲突。';
+      fixBtn.style.display = 'inline-flex';
+    } else {
+      hint.textContent = '如果问题持续，请查看日志或联系支持。';
+    }
+    show(errorView);
+  }
   async function openDashboard() { try { await invoke('open_dashboard'); } catch(e) { const a=document.createElement('a'); a.href=currentUrl; a.target='_blank'; a.click(); } }
   window.openDashboard = openDashboard;
   async function restartGateway() { setStatus('starting','重启中...'); show(startingView); try { await invoke('restart_gateway'); } catch(e) {} }
   window.restartGateway = restartGateway;
   function openLogDir() { invoke('plugin:dialog|message',{message:'日志位置：\n%APPDATA%\\com.aiwarroom.desktop\\logs\\app.log',title:'日志位置'}).catch(()=>{alert('日志：%APPDATA%\\com.aiwarroom.desktop\\logs\\app.log');}); }
   window.openLogDir = openLogDir;
+  function autoFix() { restartGateway(); }
+  window.autoFix = autoFix;
+  async function toggleAutostart(enabled) {
+    try {
+      if (enabled) { await invoke('plugin:autostart|enable'); }
+      else { await invoke('plugin:autostart|disable'); }
+    } catch(e) {
+      console.error('autostart toggle failed:', e);
+      document.getElementById('autostart-toggle').checked = !enabled;
+    }
+  }
+  window.toggleAutostart = toggleAutostart;
+  async function initAutostart() {
+    try {
+      const enabled = await invoke('plugin:autostart|is_enabled');
+      document.getElementById('autostart-toggle').checked = enabled;
+    } catch(e) { console.error('autostart check failed:', e); }
+  }
 
   let wizToken = '', wizPort = 3000;
   const CHANNELS = [
@@ -307,6 +352,7 @@
     else{localStorage.setItem('aiwarroom_onboarded','done');}
   }
   async function init() {
+    initAutostart();
     try{const ver=await invoke('get_app_version');document.getElementById('app-ver').textContent='v'+ver;}catch(e){}
     await listen('gateway-ready',(e)=>onReady(e.payload));
     await listen('gateway-error',(e)=>onError(e.payload));

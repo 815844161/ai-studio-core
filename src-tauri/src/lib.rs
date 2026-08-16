@@ -143,11 +143,11 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
     let log_dir_str = logs_dir.to_string_lossy().to_string();
     log_to_file(&app_data, &format!("启动网关，端口: {}", port));
     let sidecar = app.shell().sidecar("one-api")
-        .map_err(|e| { let m=format!("找不到sidecar: {}",e); log_to_file(&app_data,&m); STARTING.store(false,Ordering::SeqCst); m })?
+        .map_err(|e| { let m=format!("网关程序丢失，请重新安装AI作战室（sidecar缺失: {}）",e); log_to_file(&app_data,&m); STARTING.store(false,Ordering::SeqCst); m })?
         .args(["--port", &port_str, "--log-dir", &log_dir_str])
         .current_dir(&data_dir);
     let (mut rx, child) = sidecar.spawn()
-        .map_err(|e| { let m=format!("启动网关失败: {}",e); log_to_file(&app_data,&m); STARTING.store(false,Ordering::SeqCst); m })?;
+        .map_err(|e| { let m=format!("网关启动失败，请尝试重启应用或重新安装（错误: {}）",e); log_to_file(&app_data,&m); STARTING.store(false,Ordering::SeqCst); m })?;
     if let Some(state) = app.try_state::<GatewayChild>() {
         if let Ok(mut guard) = state.0.lock() { *guard = Some(child); }
     }
@@ -192,7 +192,7 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
                             });
                         } else {
                             log_to_file(&ad, "连续崩溃3次，停止自动重启");
-                            let _ = app_h.emit("gateway-error", "网关连续崩溃，请手动重启。");
+                            let _ = app_h.emit("gateway-error", "网关反复崩溃（已自动重启3次），可能是数据损坏或杀毒软件拦截，请查看日志或重新安装。");
                         }
                     }
                 }
@@ -211,7 +211,7 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
         } else {
             STARTING.store(false, Ordering::SeqCst);
             log_to_file(&ad2, "网关启动超时");
-            let _ = ah2.emit("gateway-error", "网关启动超时，请检查日志。");
+            let _ = ah2.emit("gateway-error", "网关启动超时，可能是端口被占用或杀毒软件拦截，请尝试重启应用。");
         }
     });
     Ok(port)
@@ -302,6 +302,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
         .manage(GatewayChild(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             start_gateway,
@@ -330,6 +331,8 @@ pub fn run() {
                     &tauri::menu::MenuItem::with_id(app.handle(), "show", "显示窗口", true, None::<&str>)?,
                     &tauri::menu::MenuItem::with_id(app.handle(), "dashboard", "打开管理面板", true, None::<&str>)?,
                     &tauri::menu::MenuItem::with_id(app.handle(), "restart", "重启网关", true, None::<&str>)?,
+                    &tauri::menu::PredefinedMenuItem::separator(app.handle())?,
+                    &tauri::menu::MenuItem::with_id(app.handle(), "viewlog", "查看日志", true, None::<&str>)?,
                     &tauri::menu::MenuItem::with_id(app.handle(), "quit", "退出", true, None::<&str>)?,
                 ])?)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -378,6 +381,31 @@ pub fn run() {
                             std::thread::sleep(Duration::from_millis(500));
                             let _ = start_gateway_internal(&a);
                         });
+                    }
+                    "viewlog" => {
+                        let app_data = app.path().app_data_dir().unwrap_or_default();
+                        let log_dir = app_data.join("logs");
+                        let _ = std::fs::create_dir_all(&log_dir);
+                        let log_path = log_dir.join("app.log");
+                        log_to_file(&app_data, "打开日志文件");
+                        #[cfg(target_os = "windows")]
+                        {
+                            let _ = std::process::Command::new("explorer")
+                                .arg(&log_path)
+                                .spawn();
+                        }
+                        #[cfg(target_os = "macos")]
+                        {
+                            let _ = std::process::Command::new("open")
+                                .arg(&log_path)
+                                .spawn();
+                        }
+                        #[cfg(target_os = "linux")]
+                        {
+                            let _ = std::process::Command::new("xdg-open")
+                                .arg(&log_path)
+                                .spawn();
+                        }
                     }
                     "quit" => {
                         SUPPRESS_RESTART.store(true, Ordering::SeqCst);
