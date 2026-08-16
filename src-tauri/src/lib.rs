@@ -166,17 +166,17 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
             match event {
                 CommandEvent::Stdout(line) => {
                     let text = String::from_utf8_lossy(&line).to_string();
-                    let t = text.trim();
-                    log_to_file(&ad, &format!("[stdout] {}", t));
+                    let trimmed = text.trim().to_string();
+                    log_to_file(&ad, &format!("[stdout] {}", trimmed));
                     let _ = app_h.emit("gateway-stdout", text);
-                    if t.contains("server started") {
+                    if trimmed.contains("server started") {
                         CRASH_COUNT.store(0, Ordering::SeqCst);
                     }
                 }
                 CommandEvent::Stderr(line) => {
                     let text = String::from_utf8_lossy(&line).to_string();
-                    let t = text.trim();
-                    log_to_file(&ad, &format!("[stderr] {}", t));
+                    let trimmed = text.trim().to_string();
+                    log_to_file(&ad, &format!("[stderr] {}", trimmed));
                     let _ = app_h.emit("gateway-stderr", text);
                 }
                 CommandEvent::Error(err) => {
