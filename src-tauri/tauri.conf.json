@@ -44,8 +44,7 @@
       },
       "nsis": {
         "languages": ["SimpChinese"],
-        "displayLanguageSelector": false,
-        "installMode": "perUser"
+        "displayLanguageSelector": false
       }
     }
   }
