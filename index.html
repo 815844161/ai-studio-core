@@ -239,7 +239,7 @@
       <div class="wiz-title">配置 DeepSeek（推荐）</div>
       <div class="wiz-desc">粘贴你的 API Key，开箱即用 V4 Pro + V4 Flash。</div>
       <div class="wiz-hint">
-        没有 Key？前往 <strong>platform.deepseek.com</strong> 注册获取。<br/>
+        获取 Key：访问 <strong>platform.deepseek.com</strong> → API Keys → 创建<br/>
         这一步可以跳过，之后在管理面板手动添加。
       </div>
       <div class="pwd-wrap">
@@ -400,7 +400,7 @@
       });
       const rd = await rr.json();
       if (rd.success) wizToken = rd.data;
-      localStorage.setItem('aiwarroom_onboarded', 'true');
+      // Don't set to 'done' yet - still need channel setup
       wizShow('wiz-step-key');
     } catch(e) {
       err.textContent = e.message || '操作失败，请重试';
@@ -419,16 +419,16 @@
     try {
       const base = `http://127.0.0.1:${wizPort}`;
       const channels = [
-        { name: 'DeepSeek V4 Pro', models: 'deepseek-v4-pro' },
-        { name: 'DeepSeek V4 Flash', models: 'deepseek-v4-flash' }
+        { name: 'DeepSeek Chat', models: 'deepseek-chat' },
+        { name: 'DeepSeek Reasoner', models: 'deepseek-reasoner' }
       ];
       let ok = 0;
       for (const ch of channels) {
         const r = await fetch(`${base}/api/channel`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${wizToken}` },
           body: JSON.stringify({
-            type: 1, key, name: ch.name, base_url: 'https://api.deepseek.com/v1',
-            models: ch.models, model_mapping: '', groups: ['default'], config: '{}'
+            type: 36, key, name: ch.name, base_url: 'https://api.deepseek.com',
+            models: ch.models, model_mapping: '', group: 'default', config: '{}'
           })
         });
         const d = await r.json();
@@ -436,7 +436,12 @@
       }
       if (ok === 0) throw new Error('渠道创建失败，请检查 Key');
       localStorage.setItem('aiwarroom_onboarded', 'done');
+      localStorage.setItem('aiwarroom_onboarded', 'done');
       wizShow('wiz-step-done');
+      setTimeout(() => {
+        document.getElementById('onboard-wizard').classList.remove('show');
+        openDashboard();
+      }, 1500);
     } catch(e) {
       err.textContent = e.message || '配置失败，可稍后在面板设置';
     } finally {
@@ -447,6 +452,10 @@
   window.wizSkipKey = function() {
     localStorage.setItem('aiwarroom_onboarded', 'done');
     wizShow('wiz-step-done');
+    setTimeout(() => {
+      document.getElementById('onboard-wizard').classList.remove('show');
+      openDashboard();
+    }, 1500);
   };
 
   async function wizMaybeStart() {
