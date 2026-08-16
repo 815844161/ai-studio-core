@@ -5,9 +5,26 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "shell:allow-execute",
-    "shell:allow-kill",
-    "shell:allow-stdin-write",
+    "shell:default",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "binaries/one-api",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-kill",
+      "allow": [
+        {
+          "name": "binaries/one-api",
+          "sidecar": true
+        }
+      ]
+    },
     "dialog:allow-message",
     "core:event:default",
     "core:window:default",
