@@ -8,7 +8,6 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #0d1117; }
 
-  /* 启动画面 */
   #splash {
     position: fixed; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; z-index: 100;
@@ -29,7 +28,6 @@
     0%, 100% { box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15); }
     50% { box-shadow: 0 8px 48px rgba(0, 212, 255, 0.3); }
   }
-
   .logo-dots { display: flex; gap: 8px; }
   .logo-dots span {
     width: 12px; height: 12px; border-radius: 50%;
@@ -44,11 +42,7 @@
 
   .app-title { color: #e6edf3; font-size: 22px; font-weight: 600; margin-bottom: 8px; letter-spacing: 2px; }
   .app-subtitle { color: #7d8590; font-size: 13px; margin-bottom: 32px; }
-
-  .status-bar {
-    display: flex; align-items: center; gap: 8px;
-    color: #7d8590; font-size: 13px;
-  }
+  .status-bar { display: flex; align-items: center; gap: 8px; color: #7d8590; font-size: 13px; }
   .spinner {
     width: 16px; height: 16px; border: 2px solid #21262d;
     border-top-color: #00d4ff; border-radius: 50%;
@@ -56,7 +50,6 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* 错误画面 */
   #error-screen {
     position: fixed; inset: 0; display: none; flex-direction: column;
     align-items: center; justify-content: center; z-index: 200;
@@ -72,7 +65,6 @@
   }
   .retry-btn:hover { background: #2ea043; }
 
-  /* WebView */
   #gateway-frame {
     width: 100%; height: 100%; border: none; display: none; background: #fff;
   }
@@ -81,7 +73,6 @@
 </head>
 <body>
 
-<!-- 启动画面 -->
 <div id="splash">
   <div class="logo-container">
     <div class="logo-dots"><span></span><span></span><span></span></div>
@@ -94,15 +85,13 @@
   </div>
 </div>
 
-<!-- 错误画面 -->
 <div id="error-screen">
   <div class="error-icon">⚠️</div>
   <div class="error-title">网关启动失败</div>
-  <div class="error-msg" id="error-msg">请检查端口是否被占用，或重新启动应用。</div>
+  <div class="error-msg" id="error-msg">请重启应用或检查日志文件。</div>
   <button class="retry-btn" onclick="location.reload()">重新启动</button>
 </div>
 
-<!-- One API Web界面 -->
 <iframe id="gateway-frame" src="about:blank"></iframe>
 
 <script type="module">
@@ -116,69 +105,87 @@
   const errorMsg = document.getElementById('error-msg');
 
   let readyTimeout;
+  let portKnown = false;
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    splash.classList.add('hidden');
+    errorScreen.classList.add('show');
+  }
+
+  function loadGateway(url) {
+    if (frame.src && frame.src !== 'about:blank') return;
+    statusText.textContent = '网关就绪，正在加载界面...';
+    frame.src = url;
+  }
 
   async function init() {
     try {
-      statusText.textContent = '正在启动网关服务...';
-
-      // 监听网关就绪
+      // 监听网关就绪（Rust setup自动启动后emit）
       await listen('gateway-ready', (event) => {
         clearTimeout(readyTimeout);
-        const url = event.payload;
-        console.log('Gateway ready:', url);
-        statusText.textContent = '网关就绪，正在加载界面...';
-        frame.src = url;
+        portKnown = true;
+        loadGateway(event.payload);
       });
 
-      // 兜底就绪
-      await listen('gateway-ready-timeout', (event) => {
-        clearTimeout(readyTimeout);
-        const url = event.payload;
-        console.log('Gateway ready (timeout fallback):', url);
-        frame.src = url;
-      });
-
-      // 监听错误
       await listen('gateway-error', (event) => {
+        clearTimeout(readyTimeout);
         console.error('Gateway error:', event.payload);
-        errorMsg.textContent = String(event.payload);
-        splash.classList.add('hidden');
-        errorScreen.classList.add('show');
+        showError(String(event.payload));
       });
 
-      // 监听stderr日志（调试用）
       await listen('gateway-stderr', (event) => {
         const text = String(event.payload);
         if (text.includes('FATAL') || text.includes('panic')) {
-          console.error('Gateway fatal:', text);
-          errorMsg.textContent = text.substring(0, 300);
-          splash.classList.add('hidden');
-          errorScreen.classList.add('show');
+          showError(text.substring(0, 300));
         }
       });
 
-      // 15秒超时保护
-      readyTimeout = setTimeout(() => {
+      // 20秒超时
+      readyTimeout = setTimeout(async () => {
         if (!frame.src || frame.src === 'about:blank') {
-          errorMsg.textContent = '网关启动超时（15秒），请检查端口占用或重新启动应用。';
-          splash.classList.add('hidden');
-          errorScreen.classList.add('show');
+          // 最后尝试直接连3000端口
+          try {
+            const port = await invoke('get_gateway_port');
+            if (port > 0) {
+              loadGateway(`http://127.0.0.1:${port}`);
+              return;
+            }
+          } catch(e) {}
+          showError('网关启动超时（20秒），请重启应用或检查日志。');
         }
-      }, 15000);
+      }, 20000);
 
-      // 启动网关
+      // Rust setup已自动启动gateway，但也invoke一次确保（幂等）
       const result = await invoke('start_gateway');
       console.log('Start result:', result);
 
+      // 立即尝试获取端口
+      const port = await invoke('get_gateway_port');
+      if (port > 0) {
+        portKnown = true;
+        // 端口已知，轮询等待HTTP就绪
+        const url = `http://127.0.0.1:${port}`;
+        const checkReady = async () => {
+          try {
+            const resp = await fetch(url);
+            if (resp.ok) {
+              clearTimeout(readyTimeout);
+              loadGateway(url);
+              return;
+            }
+          } catch(e) {}
+          setTimeout(checkReady, 500);
+        };
+        checkReady();
+      }
+
     } catch (err) {
       console.error('Init failed:', err);
-      errorMsg.textContent = String(err);
-      splash.classList.add('hidden');
-      errorScreen.classList.add('show');
+      showError(String(err));
     }
   }
 
-  // iframe加载完成后隐藏splash
   frame.addEventListener('load', () => {
     if (frame.src && frame.src !== 'about:blank') {
       setTimeout(() => {
