@@ -7,144 +7,80 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #0d1117; color: #e6edf3; }
-
   .app { display: flex; flex-direction: column; height: 100vh; }
-
-  /* 顶部栏 */
-  .topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 24px; background: #161b22; border-bottom: 1px solid #21262d;
-    -webkit-app-region: drag;
-  }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; background: #161b22; border-bottom: 1px solid #21262d; -webkit-app-region: drag; }
   .topbar-left { display: flex; align-items: center; gap: 12px; }
-  .logo {
-    width: 36px; height: 36px; border-radius: 10px;
-    background: linear-gradient(135deg, #1a2332, #243044);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 16px rgba(0, 212, 255, 0.15);
-  }
+  .logo { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #1a2332, #243044); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,212,255,0.15); }
   .logo svg { width: 20px; height: 20px; }
   .app-name { font-size: 16px; font-weight: 600; letter-spacing: 1px; }
   .app-ver { font-size: 11px; color: #484f58; font-family: Consolas, monospace; margin-left: 4px; }
-
-  .status-pill {
-    display: flex; align-items: center; gap: 6px;
-    padding: 5px 12px; border-radius: 20px; font-size: 12px;
-    background: #21262d; border: 1px solid #30363d;
-    -webkit-app-region: no-drag;
-  }
+  .status-pill { display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 12px; background: #21262d; border: 1px solid #30363d; -webkit-app-region: no-drag; }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #f85149; }
   .status-pill.running .status-dot { background: #3fb950; box-shadow: 0 0 8px #3fb950; }
   .status-pill.starting .status-dot { background: #d29922; animation: blink 1s infinite; }
   @keyframes blink { 50% { opacity: 0.3; } }
-
-  /* 主内容 */
   .main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px; }
-  .card {
-    background: #161b22; border: 1px solid #21262d; border-radius: 16px;
-    padding: 40px; max-width: 480px; width: 100%; text-align: center;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-  }
+  .card { background: #161b22; border: 1px solid #21262d; border-radius: 16px; padding: 40px; max-width: 480px; width: 100%; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
   .card-icon { font-size: 48px; margin-bottom: 16px; }
   .card-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
   .card-desc { color: #7d8590; font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
-
-  .port-display {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
-    padding: 10px 20px; font-family: Consolas, monospace; font-size: 15px;
-    color: #00d4ff; margin-bottom: 24px;
-  }
+  .port-display { display: inline-flex; align-items: center; gap: 8px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 20px; font-family: Consolas, monospace; font-size: 15px; color: #00d4ff; margin-bottom: 24px; }
   .port-label { color: #484f58; font-size: 12px; }
-
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 12px 28px; border: none; border-radius: 10px;
-    font-size: 14px; font-weight: 500; cursor: pointer;
-    transition: all 0.2s; text-decoration: none;
-  }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; border: none; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; text-decoration: none; }
   .btn-primary { background: #238636; color: #fff; }
   .btn-primary:hover { background: #2ea043; transform: translateY(-1px); }
   .btn-secondary { background: #21262d; color: #e6edf3; border: 1px solid #30363d; }
   .btn-secondary:hover { background: #30363d; }
   .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-
-  /* 启动中动画 */
-  .starting { display: none; }
-  .starting.show { display: block; }
-  .ready { display: none; }
-  .ready.show { display: block; }
-  .error-box { display: none; }
-  .error-box.show { display: block; }
-
-  .spinner {
-    width: 32px; height: 32px; border: 3px solid #21262d;
-    border-top-color: #00d4ff; border-radius: 50%;
-    animation: spin 0.8s linear infinite; margin: 0 auto 20px;
-  }
+  .starting { display: none; } .starting.show { display: block; }
+  .ready { display: none; } .ready.show { display: block; }
+  .error-box { display: none; } .error-box.show { display: block; }
+  .spinner { width: 32px; height: 32px; border: 3px solid #21262d; border-top-color: #00d4ff; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
   .error-msg { color: #f85149; font-size: 13px; margin-bottom: 16px; word-break: break-all; }
-
-  /* 底部信息 */
-  .footer {
-    padding: 12px 24px; text-align: center; color: #484f58; font-size: 11px;
-    border-top: 1px solid #21262d;
-  }
+  .footer { padding: 12px 24px; text-align: center; color: #484f58; font-size: 11px; border-top: 1px solid #21262d; }
   .footer a { color: #58a6ff; text-decoration: none; }
-
-  /* ===== Onboarding Wizard ===== */
-  #onboard-wizard {
-    position: fixed; inset: 0; z-index: 500; display: none;
-    background: rgba(13,17,23,0.92); backdrop-filter: blur(8px);
-    align-items: center; justify-content: center;
-  }
+  #onboard-wizard { position: fixed; inset: 0; z-index: 500; display: none; background: rgba(13,17,23,0.92); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
   #onboard-wizard.show { display: flex; }
-  .wiz-card {
-    background: #161b22; border: 1px solid #30363d; border-radius: 16px;
-    padding: 36px 32px; width: 420px; max-width: 92vw;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
-  }
-  .wiz-step { display: none; }
-  .wiz-step.active { display: block; }
+  .wiz-card { background: #161b22; border: 1px solid #30363d; border-radius: 16px; padding: 36px 32px; width: 460px; max-width: 92vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.6); }
+  .wiz-step { display: none; } .wiz-step.active { display: block; }
   .wiz-icon { font-size: 40px; text-align: center; margin-bottom: 12px; }
   .wiz-title { color: #e6edf3; font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 8px; }
-  .wiz-desc { color: #8b949e; font-size: 13px; text-align: center; margin-bottom: 24px; line-height: 1.6; }
-  .wiz-input {
-    width: 100%; padding: 11px 14px; background: #0d1117; border: 1px solid #30363d;
-    border-radius: 8px; color: #e6edf3; font-size: 14px; margin-bottom: 6px; outline: none;
-    transition: border-color .2s;
-  }
+  .wiz-desc { color: #8b949e; font-size: 13px; text-align: center; margin-bottom: 20px; line-height: 1.6; }
+  .wiz-input { width: 100%; padding: 11px 14px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; color: #e6edf3; font-size: 14px; margin-bottom: 6px; outline: none; transition: border-color .2s; }
   .wiz-input:focus { border-color: #00d4ff; }
   .wiz-error { color: #f85149; font-size: 12px; min-height: 18px; margin-bottom: 8px; }
-  .wiz-btn {
-    width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: 14px;
-    cursor: pointer; font-weight: 500; transition: all .2s; margin-top: 4px;
-  }
+  .wiz-btn { width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 500; transition: all .2s; margin-top: 4px; }
   .wiz-btn-primary { background: #1f6feb; color: #fff; }
   .wiz-btn-primary:hover { background: #388bfd; }
   .wiz-btn-primary:disabled { background: #21262d; color: #6e7681; cursor: not-allowed; }
-  .wiz-btn-skip {
-    background: transparent; color: #8b949e; font-size: 13px; width: auto;
-    margin-top: 12px; padding: 6px 12px;
-  }
+  .wiz-btn-skip { background: transparent; color: #8b949e; font-size: 13px; width: auto; margin-top: 12px; padding: 6px 12px; }
   .wiz-btn-skip:hover { color: #c9d1d9; }
   .wiz-skip-row { text-align: center; }
-  .wiz-hint {
-    background: #0d1117; border: 1px solid #21262d; border-radius: 8px;
-    padding: 10px 14px; font-size: 12px; color: #8b949e; margin-bottom: 18px; line-height: 1.7;
-  }
-  .wiz-hint a { color: #00d4ff; }
+  .wiz-hint { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #8b949e; margin-bottom: 16px; line-height: 1.7; }
   .wiz-success { text-align: center; }
   .wiz-success .check { font-size: 56px; margin-bottom: 12px; }
   .pwd-wrap { position: relative; }
   .pwd-wrap .wiz-input { padding-right: 42px; }
-  .eye-btn {
-    position: absolute; right: 10px; top: 50%; transform: translateY(-60%);
-    background: none; border: none; cursor: pointer; font-size: 16px; opacity: .6;
-  }
+  .eye-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-60%); background: none; border: none; cursor: pointer; font-size: 16px; opacity: .6; }
   .eye-btn:hover { opacity: 1; }
-
+  .ch-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .ch-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #0d1117; border: 1px solid #30363d; border-radius: 10px; cursor: pointer; transition: all .15s; }
+  .ch-card:hover { border-color: #1f6feb; }
+  .ch-card.selected { border-color: #1f6feb; background: #0d1a2d; }
+  .ch-card input[type=checkbox] { width: 18px; height: 18px; accent-color: #1f6feb; cursor: pointer; }
+  .ch-icon { font-size: 24px; width: 36px; text-align: center; }
+  .ch-info { flex: 1; }
+  .ch-name { font-size: 14px; font-weight: 500; color: #e6edf3; }
+  .ch-models { font-size: 11px; color: #8b949e; margin-top: 2px; }
+  .ch-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: #1a3a1a; color: #3fb950; white-space: nowrap; }
+  .ch-key-row { margin-bottom: 14px; }
+  .ch-key-label { font-size: 13px; color: #c9d1d9; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .ch-key-label .ch-key-name { font-weight: 500; }
+  .wiz-progress { display: flex; justify-content: center; gap: 6px; margin-bottom: 20px; }
+  .wiz-dot { width: 8px; height: 8px; border-radius: 50%; background: #30363d; }
+  .wiz-dot.active { background: #1f6feb; }
+  .wiz-dot.done { background: #3fb950; }
 </style>
 </head>
 <body>
@@ -166,28 +102,24 @@
       <span id="status-text">启动中...</span>
     </div>
   </div>
-
   <div class="main">
     <div class="card">
-      <!-- 启动中 -->
       <div class="starting show" id="starting-view">
         <div class="spinner"></div>
         <div class="card-title">正在启动网关服务</div>
-        <div class="card-desc">首次启动需要初始化数据库，请稍候...</div>
+        <div class="card-desc">首次启动可能需要几秒钟，请稍候...</div>
       </div>
-
-      <!-- 就绪 -->
       <div class="ready" id="ready-view">
         <div class="card-icon">🚀</div>
         <div class="card-title">网关运行中</div>
-        <div class="card-desc">One API 网关已就绪，点击下方按钮打开管理面板。</div>
+        <div class="card-desc">管理面板已就绪，点击下方按钮在应用内打开完整控制台。</div>
         <div class="port-display">
           <span class="port-label">地址</span>
           <span id="gateway-url">http://127.0.0.1:3000</span>
         </div>
         <div class="btn-row">
           <button class="btn btn-primary" id="open-btn" onclick="openDashboard()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
             打开管理面板
           </button>
           <button class="btn btn-secondary" onclick="restartGateway()">
@@ -196,32 +128,32 @@
           </button>
         </div>
       </div>
-
-      <!-- 错误 -->
       <div class="error-box" id="error-view">
         <div class="card-icon">⚠️</div>
         <div class="card-title" style="color:#f85149">网关启动失败</div>
         <div class="error-msg" id="error-msg">请重启应用或检查日志。</div>
-        <div class="btn-row">
-          <button class="btn btn-primary" onclick="location.reload()">重试</button>
-        </div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="location.reload()">重试</button></div>
       </div>
     </div>
   </div>
-
   <div class="footer">
-    默认账号 root / 123456 · 登录后请立即修改密码 · 
+    默认账号 root / 123456 · 登录后请立即修改密码 ·
     <a href="#" onclick="openLogDir();return false;">查看日志</a>
   </div>
 </div>
 
 <div id="onboard-wizard">
   <div class="wiz-card">
-    <!-- Step 1: Change password -->
+    <div class="wiz-progress">
+      <div class="wiz-dot active" id="dot-pwd"></div>
+      <div class="wiz-dot" id="dot-select"></div>
+      <div class="wiz-dot" id="dot-keys"></div>
+      <div class="wiz-dot" id="dot-done"></div>
+    </div>
     <div class="wiz-step active" id="wiz-step-pwd">
       <div class="wiz-icon">🔐</div>
       <div class="wiz-title">设置管理员密码</div>
-      <div class="wiz-desc">当前是默认密码，为保障安全请先修改。</div>
+      <div class="wiz-desc">当前是默认密码 123456，为保障安全请先修改。</div>
       <div class="pwd-wrap">
         <input type="password" class="wiz-input" id="wiz-new-pwd" placeholder="新密码（至少6位）" autocomplete="new-password" />
         <button class="eye-btn" onclick="wizTogglePwd('wiz-new-pwd',this)">👁</button>
@@ -232,31 +164,28 @@
       <div class="wiz-error" id="wiz-pwd-err"></div>
       <button class="wiz-btn wiz-btn-primary" id="wiz-pwd-btn" onclick="wizChangePwd()">修改密码并继续</button>
     </div>
-
-    <!-- Step 2: DeepSeek key -->
-    <div class="wiz-step" id="wiz-step-key">
+    <div class="wiz-step" id="wiz-step-select">
       <div class="wiz-icon">⚡</div>
-      <div class="wiz-title">配置 DeepSeek（推荐）</div>
-      <div class="wiz-desc">粘贴你的 API Key，开箱即用 V4 Pro + V4 Flash。</div>
-      <div class="wiz-hint">
-        获取 Key：访问 <strong>platform.deepseek.com</strong> → API Keys → 创建<br/>
-        这一步可以跳过，之后在管理面板手动添加。
-      </div>
-      <div class="pwd-wrap">
-        <input type="password" class="wiz-input" id="wiz-ds-key" placeholder="sk-xxxxxxxxxxxxxxxx" autocomplete="off" />
-        <button class="eye-btn" onclick="wizTogglePwd('wiz-ds-key',this)">👁</button>
-      </div>
-      <div class="wiz-error" id="wiz-key-err"></div>
-      <button class="wiz-btn wiz-btn-primary" id="wiz-key-btn" onclick="wizSetupDS()">配置并开始使用</button>
-      <div class="wiz-skip-row"><button class="wiz-btn wiz-btn-skip" onclick="wizSkipKey()">暂时跳过</button></div>
+      <div class="wiz-title">选择AI服务商</div>
+      <div class="wiz-desc">勾选你有API Key的服务商，后续可在面板中随时添加。</div>
+      <div class="ch-list" id="ch-list"></div>
+      <button class="wiz-btn wiz-btn-primary" onclick="wizGoToKeys()">下一步</button>
+      <div class="wiz-skip-row"><button class="wiz-btn wiz-btn-skip" onclick="wizSkipAll()">暂时跳过，稍后手动配置</button></div>
     </div>
-
-    <!-- Step 3: Done -->
+    <div class="wiz-step" id="wiz-step-keys">
+      <div class="wiz-icon">🔑</div>
+      <div class="wiz-title">填写API Key</div>
+      <div class="wiz-desc">粘贴各服务商的API Key，留空则跳过该渠道。</div>
+      <div id="ch-key-fields"></div>
+      <div class="wiz-error" id="wiz-key-err"></div>
+      <button class="wiz-btn wiz-btn-primary" id="wiz-key-btn" onclick="wizSetupChannels()"><span id="wiz-key-btn-text">配置完成</span></button>
+      <div class="wiz-skip-row"><button class="wiz-btn wiz-btn-skip" onclick="wizSkipAll()">跳过</button></div>
+    </div>
     <div class="wiz-step" id="wiz-step-done">
       <div class="wiz-success">
         <div class="check">✅</div>
         <div class="wiz-title">配置完成</div>
-        <div class="wiz-desc">点击"打开管理面板"开始使用 AI 作战室。</div>
+        <div class="wiz-desc">AI作战室已就绪，点击"打开管理面板"开始使用。</div>
       </div>
     </div>
   </div>
@@ -265,8 +194,6 @@
 <script type="module">
   const { invoke } = window.__TAURI__.core;
   const { listen } = window.__TAURI__.event;
-  const { open } = window.__TAURI__.shell || {};
-
   const statusPill = document.getElementById('status-pill');
   const statusText = document.getElementById('status-text');
   const startingView = document.getElementById('starting-view');
@@ -274,249 +201,119 @@
   const errorView = document.getElementById('error-view');
   const gatewayUrl = document.getElementById('gateway-url');
   const errorMsg = document.getElementById('error-msg');
-
   let currentUrl = 'http://127.0.0.1:3000';
-
-  function show(view) {
-    startingView.classList.remove('show');
-    readyView.classList.remove('show');
-    errorView.classList.remove('show');
-    view.classList.add('show');
-  }
-
-  function setStatus(cls, text) {
-    statusPill.className = 'status-pill ' + cls;
-    statusText.textContent = text;
-  }
-
-  function onReady(url) {
-    currentUrl = url || currentUrl;
-    gatewayUrl.textContent = currentUrl;
-    setStatus('running', '运行中');
-    show(readyView);
-    wizMaybeStart();
-  }
-
-  function onError(msg) {
-    setStatus('', '已停止');
-    errorMsg.textContent = String(msg || '未知错误');
-    show(errorView);
-  }
-
-  async function openDashboard() {
-    try {
-      await invoke('open_dashboard');
-    } catch(e) {
-      // fallback
-      const a = document.createElement('a');
-      a.href = currentUrl;
-      a.target = '_blank';
-      a.click();
-    }
-  }
+  function show(view) { startingView.classList.remove('show'); readyView.classList.remove('show'); errorView.classList.remove('show'); view.classList.add('show'); }
+  function setStatus(cls, text) { statusPill.className = 'status-pill ' + cls; statusText.textContent = text; }
+  function onReady(url) { currentUrl = url || currentUrl; gatewayUrl.textContent = currentUrl; setStatus('running','运行中'); show(readyView); wizMaybeStart(); }
+  function onError(msg) { setStatus('','已停止'); errorMsg.textContent = String(msg||'未知错误'); show(errorView); }
+  async function openDashboard() { try { await invoke('open_dashboard'); } catch(e) { const a=document.createElement('a'); a.href=currentUrl; a.target='_blank'; a.click(); } }
   window.openDashboard = openDashboard;
-
-  async function restartGateway() {
-    setStatus('starting', '重启中...');
-    show(startingView);
-    try {
-      await invoke('restart_gateway');
-    } catch(e) {
-      console.error('restart failed:', e);
-    }
-  }
+  async function restartGateway() { setStatus('starting','重启中...'); show(startingView); try { await invoke('restart_gateway'); } catch(e) {} }
   window.restartGateway = restartGateway;
-
-  function openLogDir() {
-    invoke('plugin:dialog|message', {
-      message: '日志文件位置：\n%APPDATA%\\com.aiwarroom.desktop\\logs\\app.log\n\nOne API数据：\n%APPDATA%\\com.aiwarroom.desktop\\gateway\\',
-      title: '日志位置'
-    }).catch(() => {
-      alert('日志：%APPDATA%\\com.aiwarroom.desktop\\logs\\app.log');
-    });
-  }
+  function openLogDir() { invoke('plugin:dialog|message',{message:'日志位置：\n%APPDATA%\\com.aiwarroom.desktop\\logs\\app.log',title:'日志位置'}).catch(()=>{alert('日志：%APPDATA%\\com.aiwarroom.desktop\\logs\\app.log');}); }
   window.openLogDir = openLogDir;
 
-  // ===== Onboarding Wizard =====
-  let wizToken = '';
-  let wizPort = 3000;
-  window.wizTogglePwd = function(id, btn) {
-    const inp = document.getElementById(id);
-    inp.type = inp.type === 'password' ? 'text' : 'password';
-    btn.textContent = inp.type === 'password' ? '👁' : '🙈';
-  };
-
-  function wizShow(stepId) {
-    document.querySelectorAll('.wiz-step').forEach(s => s.classList.remove('active'));
+  let wizToken = '', wizPort = 3000;
+  const CHANNELS = [
+    { id:'zhipu', name:'智谱AI（GLM-4-Flash）', icon:'🧠', badge:'永久免费', models:'glm-4-flash,glm-4.7-flash', type:27, baseUrl:'https://open.bigmodel.cn/api/paas/v4', hint:'open.bigmodel.cn 注册送2000万token，Flash模型永久免费' },
+    { id:'baidu', name:'百度千帆（ERNIE-Speed）', icon:'🐾', badge:'永久免费', models:'ERNIE-Speed-8K,ERNIE-Lite-8K', type:38, baseUrl:'', hint:'console.bce.baidu.com/qianfan ERNIE-Speed永久免费（One API内置配置，无需base_url）' },
+    { id:'siliconflow', name:'硅基流动', icon:'🌀', badge:'2000万token', models:'Qwen/Qwen2.5-7B-Instruct,deepseek-ai/DeepSeek-V3,THUDM/glm-4-flash', type:36, baseUrl:'https://api.siliconflow.cn/v1', hint:'cloud.siliconflow.cn 注册送2000万token，9B以下模型永久免费' },
+    { id:'deepseek', name:'DeepSeek V4', icon:'🔷', badge:'低价', models:'deepseek-v4-pro,deepseek-v4-flash', type:36, baseUrl:'https://api.deepseek.com', hint:'platform.deepseek.com 编程推理能力强，按量付费极低' },
+  ];
+  let selectedChannels = new Set(['zhipu']);
+  window.wizTogglePwd = function(id, btn) { const inp=document.getElementById(id); inp.type=inp.type==='password'?'text':'password'; btn.textContent=inp.type==='password'?'👁':'🙈'; };
+  function wizShowStep(stepId) {
+    document.querySelectorAll('.wiz-step').forEach(s=>s.classList.remove('active'));
     document.getElementById(stepId).classList.add('active');
+    const steps=['pwd','select','keys','done']; const idx=steps.indexOf(stepId.replace('wiz-step-',''));
+    steps.forEach((s,i)=>{ const dot=document.getElementById('dot-'+s); if(dot) dot.className='wiz-dot'+(i<idx?' done':i===idx?' active':''); });
   }
-
+  function renderChannelList() {
+    document.getElementById('ch-list').innerHTML = CHANNELS.map(ch=>`
+      <label class="ch-card ${selectedChannels.has(ch.id)?'selected':''}" data-id="${ch.id}">
+        <input type="checkbox" ${selectedChannels.has(ch.id)?'checked':''} onchange="toggleCh('${ch.id}',this.checked)" />
+        <span class="ch-icon">${ch.icon}</span>
+        <span class="ch-info"><span class="ch-name">${ch.name}</span><span class="ch-models">${ch.models.split(',').slice(0,2).join(', ')}${ch.models.split(',').length>2?'...':''}</span></span>
+        <span class="ch-badge">${ch.badge}</span>
+      </label>`).join('');
+  }
+  window.toggleCh = function(id, checked) { if(checked) selectedChannels.add(id); else selectedChannels.delete(id); document.querySelectorAll('.ch-card').forEach(c=>{c.classList.toggle('selected',selectedChannels.has(c.dataset.id));}); };
+  function renderKeyFields() {
+    const container=document.getElementById('ch-key-fields');
+    const selected=CHANNELS.filter(ch=>selectedChannels.has(ch.id));
+    if(!selected.length){ container.innerHTML='<div class="wiz-hint">未选择任何渠道，将直接跳过。</div>'; return; }
+    container.innerHTML=selected.map(ch=>`
+      <div class="ch-key-row">
+        <div class="ch-key-label"><span>${ch.icon}</span><span class="ch-key-name">${ch.name}</span></div>
+        <div class="pwd-wrap"><input type="password" class="wiz-input" id="key-${ch.id}" placeholder="粘贴API Key（留空跳过）" autocomplete="off" /><button class="eye-btn" onclick="wizTogglePwd('key-${ch.id}',this)">👁</button></div>
+        <div style="font-size:11px;color:#6e7681;margin-top:2px;">${ch.hint}</div>
+      </div>`).join('');
+  }
   async function wizCheckDefaultPwd() {
-    try {
-      const port = await invoke('get_gateway_port');
-      wizPort = port || 3000;
-      const resp = await fetch(`http://127.0.0.1:${wizPort}/api/user/login`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'root', password: '123456' })
-      });
-      const data = await resp.json();
-      if (data.success) {
-        wizToken = data.data;
-        return true;
-      }
-      return false;
-    } catch(e) { return false; }
+    try { const port=await invoke('get_gateway_port'); wizPort=port||3000;
+      const resp=await fetch(`http://127.0.0.1:${wizPort}/api/user/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'root',password:'123456'})});
+      const data=await resp.json(); if(data.success){wizToken=data.data;return true;} return false;
+    } catch(e){return false;}
   }
-
   window.wizChangePwd = async function() {
-    const p1 = document.getElementById('wiz-new-pwd').value;
-    const p2 = document.getElementById('wiz-confirm-pwd').value;
-    const err = document.getElementById('wiz-pwd-err');
-    const btn = document.getElementById('wiz-pwd-btn');
-    err.textContent = '';
-    if (!p1 || p1.length < 6) { err.textContent = '密码至少6位'; return; }
-    if (p1 !== p2) { err.textContent = '两次密码不一致'; return; }
-    if (p1 === '123456') { err.textContent = '不能与默认密码相同'; return; }
-    btn.disabled = true; btn.textContent = '修改中...';
+    const p1=document.getElementById('wiz-new-pwd').value, p2=document.getElementById('wiz-confirm-pwd').value;
+    const err=document.getElementById('wiz-pwd-err'), btn=document.getElementById('wiz-pwd-btn');
+    err.textContent='';
+    if(!p1||p1.length<6){err.textContent='密码至少6位';return;}
+    if(p1!==p2){err.textContent='两次密码不一致';return;}
+    if(p1==='123456'){err.textContent='不能与默认密码相同';return;}
+    btn.disabled=true; btn.textContent='修改中...';
     try {
-      if (!wizToken) {
-        const lr = await fetch(`http://127.0.0.1:${wizPort}/api/user/login`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: 'root', password: '123456' })
-        });
-        const ld = await lr.json();
-        if (ld.success) wizToken = ld.data;
-      }
-      const resp = await fetch(`http://127.0.0.1:${wizPort}/api/user/self`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${wizToken}` },
-        body: JSON.stringify({ password: p1 })
-      });
-      const data = await resp.json();
-      if (!data.success) throw new Error(data.message || '修改失败');
-      // re-login
-      const rr = await fetch(`http://127.0.0.1:${wizPort}/api/user/login`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'root', password: p1 })
-      });
-      const rd = await rr.json();
-      if (rd.success) wizToken = rd.data;
-      // Don't set to 'done' yet - still need channel setup
-      wizShow('wiz-step-key');
-    } catch(e) {
-      err.textContent = e.message || '操作失败，请重试';
-    } finally {
-      btn.disabled = false; btn.textContent = '修改密码并继续';
-    }
+      if(!wizToken){const lr=await fetch(`http://127.0.0.1:${wizPort}/api/user/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'root',password:'123456'})});const ld=await lr.json();if(ld.success)wizToken=ld.data;}
+      const resp=await fetch(`http://127.0.0.1:${wizPort}/api/user/self`,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':`Bearer ${wizToken}`},body:JSON.stringify({password:p1})});
+      const data=await resp.json(); if(!data.success)throw new Error(data.message||'修改失败');
+      const rr=await fetch(`http://127.0.0.1:${wizPort}/api/user/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'root',password:p1})});
+      const rd=await rr.json(); if(rd.success)wizToken=rd.data;
+      renderChannelList(); wizShowStep('wiz-step-select');
+    } catch(e){err.textContent=e.message||'操作失败';} finally{btn.disabled=false;btn.textContent='修改密码并继续';}
   };
-
-  window.wizSetupDS = async function() {
-    const key = document.getElementById('wiz-ds-key').value.trim();
-    const err = document.getElementById('wiz-key-err');
-    const btn = document.getElementById('wiz-key-btn');
-    err.textContent = '';
-    if (!key || !key.startsWith('sk-')) { err.textContent = '请输入有效的 sk- 开头 Key'; return; }
-    btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;vertical-align:middle"></span> 配置中...';
+  window.wizGoToKeys = function() { if(!selectedChannels.size){wizSkipAll();return;} renderKeyFields(); wizShowStep('wiz-step-keys'); };
+  window.wizSetupChannels = async function() {
+    const err=document.getElementById('wiz-key-err'), btn=document.getElementById('wiz-key-btn'), btnText=document.getElementById('wiz-key-btn-text');
+    err.textContent=''; const selected=CHANNELS.filter(ch=>selectedChannels.has(ch.id));
+    const keysToSetup=[];
+    for(const ch of selected){const val=document.getElementById('key-'+ch.id)?.value?.trim();if(val)keysToSetup.push({...ch,key:val});}
+    if(!keysToSetup.length){wizSkipAll();return;}
+    btn.disabled=true; btnText.textContent='配置中...';
     try {
-      const base = `http://127.0.0.1:${wizPort}`;
-      const channels = [
-        { name: 'DeepSeek V4 Pro', models: 'deepseek-v4-pro' },
-        { name: 'DeepSeek V4 Flash', models: 'deepseek-v4-flash' }
-      ];
-      let ok = 0;
-      for (const ch of channels) {
-        const r = await fetch(`${base}/api/channel`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${wizToken}` },
-          body: JSON.stringify({
-            type: 36, key, name: ch.name, base_url: 'https://api.deepseek.com',
-            models: ch.models, model_mapping: '', group: 'default', config: '{}'
-          })
-        });
-        const d = await r.json();
-        if (d.success) ok++;
-      }
-      if (ok === 0) throw new Error('渠道创建失败，请检查 Key');
-      localStorage.setItem('aiwarroom_onboarded', 'done');
-      wizShow('wiz-step-done');
-      setTimeout(() => {
-        document.getElementById('onboard-wizard').classList.remove('show');
-        openDashboard();
-      }, 1500);
-    } catch(e) {
-      err.textContent = e.message || '配置失败，可稍后在面板设置';
-    } finally {
-      btn.disabled = false; btn.textContent = '配置并开始使用';
-    }
-  };
-
-  window.wizSkipKey = function() {
-    localStorage.setItem('aiwarroom_onboarded', 'done');
-    wizShow('wiz-step-done');
-    setTimeout(() => {
-      document.getElementById('onboard-wizard').classList.remove('show');
-      openDashboard();
-    }, 1500);
-  };
-
-  async function wizMaybeStart() {
-    if (localStorage.getItem('aiwarroom_onboarded') === 'done') return;
-    const isDefault = await wizCheckDefaultPwd();
-    if (isDefault) {
-      document.getElementById('onboard-wizard').classList.add('show');
-      wizShow('wiz-step-pwd');
-    } else {
-      localStorage.setItem('aiwarroom_onboarded', 'done');
-    }
-  }
-
-
-  async function init() {
-    // 版本号
-    try {
-      const ver = await invoke('get_app_version');
-      document.getElementById('app-ver').textContent = 'v' + ver;
-    } catch(e) {}
-
-    // 监听事件
-    await listen('gateway-ready', (e) => onReady(e.payload));
-    await listen('gateway-error', (e) => onError(e.payload));
-
-    // 30秒超时
-    setTimeout(async () => {
-      if (!readyView.classList.contains('show') && !errorView.classList.contains('show')) {
-        try {
-          const port = await invoke('get_gateway_port');
-          if (port > 0) {
-            onReady(`http://127.0.0.1:${port}`);
-            return;
-          }
-        } catch(e) {}
-        onError('网关启动超时（30秒），请检查日志后重试。');
-      }
-    }, 30000);
-
-    // 轮询端口（Rust setup已启动gateway）
-    const checkPort = async () => {
-      try {
-        const port = await invoke('get_gateway_port');
-        if (port > 0) {
-          // HTTP轮询确认就绪
-          const url = `http://127.0.0.1:${port}`;
-          const poll = async () => {
-            try {
-              const resp = await fetch(url);
-              if (resp.ok) { onReady(url); return; }
-            } catch(e) {}
-            setTimeout(poll, 600);
-          };
-          poll();
-          return;
+      const base=`http://127.0.0.1:${wizPort}`; let ok=0;
+      for(const ch of keysToSetup){
+        for(const model of ch.models.split(',')){
+          try{
+            const body={type:ch.type,key:ch.key,name:`${ch.name.split('（')[0]}/${model.trim()}`,base_url:ch.baseUrl,models:model.trim(),model_mapping:'',group:'default',config:'{}'};
+            const r=await fetch(`${base}/api/channel`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${wizToken}`},body:JSON.stringify(body)});
+            const d=await r.json(); if(d.success)ok++;
+          }catch(e2){}
         }
-      } catch(e) {}
-      setTimeout(checkPort, 800);
-    };
+      }
+      localStorage.setItem('aiwarroom_onboarded','done');
+      wizShowStep('wiz-step-done');
+      setTimeout(()=>{document.getElementById('onboard-wizard').classList.remove('show');openDashboard();},2000);
+    } catch(e){err.textContent=e.message||'配置失败';} finally{btn.disabled=false;btnText.textContent='配置完成';}
+  };
+  window.wizSkipAll = function() {
+    localStorage.setItem('aiwarroom_onboarded','done'); wizShowStep('wiz-step-done');
+    setTimeout(()=>{document.getElementById('onboard-wizard').classList.remove('show');openDashboard();},1500);
+  };
+  async function wizMaybeStart() {
+    if(localStorage.getItem('aiwarroom_onboarded')==='done')return;
+    const isDefault=await wizCheckDefaultPwd();
+    if(isDefault){document.getElementById('onboard-wizard').classList.add('show');wizShowStep('wiz-step-pwd');}
+    else{localStorage.setItem('aiwarroom_onboarded','done');}
+  }
+  async function init() {
+    try{const ver=await invoke('get_app_version');document.getElementById('app-ver').textContent='v'+ver;}catch(e){}
+    await listen('gateway-ready',(e)=>onReady(e.payload));
+    await listen('gateway-error',(e)=>onError(e.payload));
+    setTimeout(async()=>{if(!readyView.classList.contains('show')&&!errorView.classList.contains('show')){try{const port=await invoke('get_gateway_port');if(port>0){onReady(`http://127.0.0.1:${port}`);return;}}catch(e){}onError('网关启动超时（30秒），请检查日志后重试。');}},30000);
+    const checkPort=async()=>{try{const port=await invoke('get_gateway_port');if(port>0){const url=`http://127.0.0.1:${port}`;const poll=async()=>{try{const resp=await fetch(url);if(resp.ok){onReady(url);return;}}catch(e){}setTimeout(poll,600);};poll();return;}}catch(e){}setTimeout(checkPort,800);};
     checkPort();
   }
-
   init();
 </script>
 </body>
