@@ -248,9 +248,10 @@ fn dashboard_url() -> String {
 /// 主线程消息泵保持畅通，WebView2可正常初始化。
 #[tauri::command]
 async fn open_dashboard(app: tauri::AppHandle) -> Result<(), String> {
+    let app_data = app.path().app_data_dir().unwrap_or_default();
+    log_to_file(&app_data, "open_dashboard命令被调用");
     let _ = start_gateway_internal(&app);
     let url = dashboard_url();
-    let app_data = app.path().app_data_dir().unwrap_or_default();
     log_to_file(&app_data, &format!("打开管理面板(内嵌): {}", url));
 
     if let Some(existing) = app.get_webview_window("dashboard") {
