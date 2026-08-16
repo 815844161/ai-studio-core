@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "AI作战室默认权限配置",
-  "windows": ["main"],
+  "windows": ["main", "dashboard"],
   "permissions": [
     "core:default",
     "shell:default",
