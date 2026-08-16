@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI作战室 - 下载</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: linear-gradient(135deg, #0d1117 0%, #1a2332 50%, #0d1117 100%);
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  color: #e6edf3;
+}
+.container { text-align: center; padding: 40px 20px; max-width: 560px; }
+.logo {
+  width: 80px; height: 80px; border-radius: 20px; margin: 0 auto 24px;
+  background: linear-gradient(135deg, #1a2332, #243044);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 32px rgba(0,212,255,0.2);
+  font-size: 36px;
+}
+h1 { font-size: 28px; margin-bottom: 8px; letter-spacing: 2px; }
+.subtitle { color: #7d8590; font-size: 14px; margin-bottom: 40px; }
+.version { color: #00d4ff; font-size: 13px; margin-bottom: 32px; }
+.btn-download {
+  display: inline-block; padding: 16px 48px; font-size: 17px;
+  background: linear-gradient(135deg, #238636, #2ea043);
+  color: #fff; border: none; border-radius: 12px; cursor: pointer;
+  text-decoration: none; font-weight: 600; transition: all 0.2s;
+  box-shadow: 0 4px 24px rgba(35,134,54,0.4);
+}
+.btn-download:hover { transform: translateY(-2px); box-shadow: 0 6px 32px rgba(35,134,54,0.5); }
+.btn-mirror {
+  display: inline-block; margin-top: 16px; padding: 10px 24px; font-size: 13px;
+  background: transparent; color: #7d8590; border: 1px solid #30363d;
+  border-radius: 8px; text-decoration: none; transition: all 0.2s;
+}
+.btn-mirror:hover { border-color: #00d4ff; color: #00d4ff; }
+.features { margin-top: 48px; text-align: left; }
+.feature {
+  display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;
+  color: #7d8590; font-size: 14px; line-height: 1.6;
+}
+.feature-icon { font-size: 18px; flex-shrink: 0; }
+.footer { margin-top: 48px; color: #484f58; font-size: 12px; }
+.footer a { color: #7d8590; text-decoration: none; }
+.size { color: #7d8590; font-size: 12px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">🛡️</div>
+  <h1>AI作战室</h1>
+  <p class="subtitle">多模型AI网关 · 本地部署 · 开箱即用</p>
+  <p class="version">v0.2.0 · Windows x64</p>
+
+  <a href="https://github.com/815844161/ai-studio-core/releases/latest/download/AI作战室_Setup_v0.2.0.exe" class="btn-download" id="mainBtn">
+    ⬇ 立即下载
+  </a>
+  <br>
+  <a href="https://gh-proxy.com/https://github.com/815844161/ai-studio-core/releases/latest/download/AI作战室_Setup_v0.2.0.exe" class="btn-mirror">
+    国内镜像下载（推荐）
+  </a>
+  <p class="size">安装包约 12MB · Windows 10/11</p>
+
+  <div class="features">
+    <div class="feature">
+      <span class="feature-icon">🔑</span>
+      <span>内置 One API 网关，统一管理所有 AI 模型的 API Key</span>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">🖥️</span>
+      <span>窗口直接管理，支持系统托盘最小化</span>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">🔒</span>
+      <span>数据本地存储，不上传任何隐私信息</span>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">🆓</span>
+      <span>MIT 开源免费，零成本使用</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="https://github.com/815844161/ai-studio-core">GitHub 仓库</a> ·
+    默认账号 root / 123456（登录后请修改密码）
+  </div>
+</div>
+</body>
+</html>
