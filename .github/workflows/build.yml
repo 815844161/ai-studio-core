@@ -3,7 +3,7 @@ name: Build AI War Room
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -44,7 +44,27 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.BUILD_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'AI作战室 ${{ github.ref_name }}'
-          releaseBody: 'AI作战室桌面端安装包'
+          releaseName: "AI作战室 ${{ github.ref_name }}"
+          releaseBody: |
+            ## AI作战室 v0.2.0 更新内容
+            - 修复One API网关自动启动问题（核心修复）
+            - 窗口直接嵌入One API管理界面
+            - 添加系统托盘图标（最小化到托盘）
+            - 首次启动自动初始化，默认账号 root / 123456
+            - 安装包文件名优化
           releaseDraft: false
           prerelease: false
+
+      - name: Rename installer
+        run: |
+          # 找到生成的NSIS安装包并重命名
+          $exe = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" | Select-Object -First 1
+          if ($exe) {
+            $newName = "AI作战室_Setup_${{ github.ref_name }}.exe"
+            Rename-Item $exe.FullName -NewName $newName
+            Write-Host "Renamed to $newName"
+            # 上传重命名后的文件到release
+            gh release upload ${{ github.ref_name }} (Join-Path $exe.DirectoryName $newName) --clobber
+          }
+        env:
+          GH_TOKEN: ${{ secrets.BUILD_TOKEN }}
