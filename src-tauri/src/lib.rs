@@ -12,7 +12,6 @@ static SUPPRESS_RESTART: AtomicBool = AtomicBool::new(false);
 static CRASH_COUNT: AtomicU8 = AtomicU8::new(0);
 
 struct GatewayChild(Mutex<Option<tauri_plugin_shell::process::CommandChild>>);
-
 impl Drop for GatewayChild {
     fn drop(&mut self) {
         if let Ok(mut guard) = self.0.lock() {
@@ -121,7 +120,6 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
     if existing_port != 0 && port_is_listening(existing_port) {
         return Ok(existing_port);
     }
-
     if STARTING.load(Ordering::SeqCst) {
         for _ in 0..50 {
             std::thread::sleep(Duration::from_millis(100));
@@ -134,7 +132,6 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
     SUPPRESS_RESTART.store(false, Ordering::SeqCst);
     GATEWAY_PORT.store(0, Ordering::SeqCst);
     kill_existing_gateway(app);
-
     let port = find_gateway_port();
     let app_data = app.path().app_data_dir()
         .map_err(|e| { STARTING.store(false, Ordering::SeqCst); format!("无法获取数据目录: {}", e) })?;
@@ -142,23 +139,18 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
     let _ = std::fs::create_dir_all(&data_dir);
     let logs_dir = data_dir.join("logs");
     let _ = std::fs::create_dir_all(&logs_dir);
-
     let port_str = port.to_string();
     let log_dir_str = logs_dir.to_string_lossy().to_string();
     log_to_file(&app_data, &format!("启动网关，端口: {}", port));
-
     let sidecar = app.shell().sidecar("one-api")
         .map_err(|e| { let m=format!("找不到sidecar: {}",e); log_to_file(&app_data,&m); STARTING.store(false,Ordering::SeqCst); m })?
         .args(["--port", &port_str, "--log-dir", &log_dir_str])
         .current_dir(&data_dir);
-
     let (mut rx, child) = sidecar.spawn()
         .map_err(|e| { let m=format!("启动网关失败: {}",e); log_to_file(&app_data,&m); STARTING.store(false,Ordering::SeqCst); m })?;
-
     if let Some(state) = app.try_state::<GatewayChild>() {
         if let Ok(mut guard) = state.0.lock() { *guard = Some(child); }
     }
-
     let app_h = app.clone();
     let ad = app_data.clone();
     tauri::async_runtime::spawn(async move {
@@ -208,7 +200,6 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
             }
         }
     });
-
     let ah2 = app.clone();
     let ad2 = app_data.clone();
     std::thread::spawn(move || {
@@ -223,7 +214,6 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
             let _ = ah2.emit("gateway-error", "网关启动超时，请检查日志。");
         }
     });
-
     Ok(port)
 }
 
@@ -252,13 +242,12 @@ fn dashboard_url() -> String {
     }
 }
 
-/// 在Tauri内嵌窗口中打开管理面板
+/// 在Tauri内嵌窗口中打开管理面板（必须在独立线程中调用，避免Windows同步命令死锁）
 fn open_dashboard_window(app: &tauri::AppHandle) -> Result<(), String> {
     let url = dashboard_url();
     let app_data = app.path().app_data_dir().unwrap_or_default();
     log_to_file(&app_data, &format!("打开管理面板(内嵌): {}", url));
 
-    // 如果窗口已存在，直接聚焦
     if let Some(existing) = app.get_webview_window("dashboard") {
         let _ = existing.show();
         let _ = existing.set_focus();
@@ -266,7 +255,6 @@ fn open_dashboard_window(app: &tauri::AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    // 创建新窗口
     let url_parsed: tauri::Url = url.parse().map_err(|e| format!("URL解析失败: {}", e))?;
     match WebviewWindowBuilder::new(app, "dashboard", WebviewUrl::External(url_parsed))
         .title("AI作战室 - 管理面板")
@@ -274,6 +262,7 @@ fn open_dashboard_window(app: &tauri::AppHandle) -> Result<(), String> {
         .min_inner_size(900.0, 600.0)
         .resizable(true)
         .center()
+        .visible(true)
         .build()
     {
         Ok(_) => {
@@ -281,7 +270,6 @@ fn open_dashboard_window(app: &tauri::AppHandle) -> Result<(), String> {
             Ok(())
         }
         Err(e) => {
-            // 内嵌窗口失败，回退到系统浏览器
             log_to_file(&app_data, &format!("内嵌窗口创建失败，回退浏览器: {}", e));
             let _ = start_gateway_internal(app);
             open_in_browser(&url).map_err(|e2| format!("内嵌失败({})，浏览器也失败: {}", e, e2))
@@ -289,10 +277,15 @@ fn open_dashboard_window(app: &tauri::AppHandle) -> Result<(), String> {
     }
 }
 
+/// v0.4.1修复：改为async命令，在spawn_blocking线程中创建窗口
+/// 修复Tauri 2 Windows已知bug：同步命令中WebviewWindowBuilder.build()死锁
 #[tauri::command]
-fn open_dashboard(app: tauri::AppHandle) -> Result<(), String> {
+async fn open_dashboard(app: tauri::AppHandle) -> Result<(), String> {
     let _ = start_gateway_internal(&app);
-    open_dashboard_window(&app)
+    let app_clone = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        open_dashboard_window(&app_clone)
+    }).await.map_err(|e| format!("窗口创建任务失败: {}", e))?
 }
 
 #[tauri::command]
@@ -325,7 +318,6 @@ pub fn run() {
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                // 主窗口关闭时最小化到托盘；dashboard窗口直接关闭
                 if window.label() == "main" {
                     let _ = window.hide();
                     api.prevent_close();
@@ -337,7 +329,6 @@ pub fn run() {
             if let Err(e) = start_gateway_internal(&ah) {
                 eprintln!("启动网关失败: {}", e);
             }
-
             let _tray = TrayIconBuilder::with_id("main-tray")
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("AI作战室")
@@ -352,7 +343,10 @@ pub fn run() {
                         if let Some(w) = app.get_webview_window("main") { let _ = w.show(); let _ = w.set_focus(); }
                     }
                     "dashboard" => {
-                        let _ = open_dashboard_window(app);
+                        let app_clone = app.clone();
+                        std::thread::spawn(move || {
+                            let _ = open_dashboard_window(&app_clone);
+                        });
                     }
                     "restart" => {
                         SUPPRESS_RESTART.store(true, Ordering::SeqCst);
