@@ -12,7 +12,7 @@
     position: fixed; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; z-index: 100;
     background: linear-gradient(135deg, #0d1117 0%, #1a2332 50%, #0d1117 100%);
-    transition: opacity 0.5s ease;
+    transition: opacity 0.4s ease;
   }
   #splash.hidden { opacity: 0; pointer-events: none; }
 
@@ -49,6 +49,12 @@
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  .version-tag {
+    position: fixed; bottom: 16px; right: 20px;
+    color: #484f58; font-size: 12px; z-index: 150;
+    font-family: "Consolas", monospace;
+  }
 
   #error-screen {
     position: fixed; inset: 0; display: none; flex-direction: column;
@@ -93,19 +99,21 @@
 </div>
 
 <iframe id="gateway-frame" src="about:blank"></iframe>
+<div class="version-tag" id="version-tag"></div>
 
 <script type="module">
-  const { invoke } = window.__TAURI__.core;
-  const { listen } = window.__TAURI__.event;
+  const tauri = window.__TAURI__;
+  const invoke = tauri.core.invoke;
+  const listen = tauri.event.listen;
 
   const splash = document.getElementById('splash');
   const frame = document.getElementById('gateway-frame');
   const errorScreen = document.getElementById('error-screen');
   const statusText = document.getElementById('status-text');
   const errorMsg = document.getElementById('error-msg');
+  const versionTag = document.getElementById('version-tag');
 
   let readyTimeout;
-  let portKnown = false;
 
   function showError(msg) {
     errorMsg.textContent = msg;
@@ -115,22 +123,28 @@
 
   function loadGateway(url) {
     if (frame.src && frame.src !== 'about:blank') return;
-    statusText.textContent = '网关就绪，正在加载界面...';
+    statusText.textContent = '网关已就绪，正在加载界面...';
     frame.src = url;
   }
 
   async function init() {
     try {
-      // 监听网关就绪（Rust setup自动启动后emit）
+      // 显示版本号
+      try {
+        const ver = await invoke('get_app_version');
+        versionTag.textContent = 'v' + ver;
+      } catch(e) {}
+
+      // 监听网关事件（Rust setup 已自动启动）
       await listen('gateway-ready', (event) => {
         clearTimeout(readyTimeout);
-        portKnown = true;
+        console.log('[gateway] ready:', event.payload);
         loadGateway(event.payload);
       });
 
       await listen('gateway-error', (event) => {
         clearTimeout(readyTimeout);
-        console.error('Gateway error:', event.payload);
+        console.error('[gateway] error:', event.payload);
         showError(String(event.payload));
       });
 
@@ -141,10 +155,9 @@
         }
       });
 
-      // 20秒超时
+      // 30秒超时
       readyTimeout = setTimeout(async () => {
         if (!frame.src || frame.src === 'about:blank') {
-          // 最后尝试直接连3000端口
           try {
             const port = await invoke('get_gateway_port');
             if (port > 0) {
@@ -152,19 +165,17 @@
               return;
             }
           } catch(e) {}
-          showError('网关启动超时（20秒），请重启应用或检查日志。');
+          showError('网关启动超时（30秒），请重启应用或检查日志。');
         }
-      }, 20000);
+      }, 30000);
 
-      // Rust setup已自动启动gateway，但也invoke一次确保（幂等）
-      const result = await invoke('start_gateway');
-      console.log('Start result:', result);
+      // 先尝试获取Rust setup已启动的端口
+      await new Promise(r => setTimeout(r, 800));
+      let port = 0;
+      try { port = await invoke('get_gateway_port'); } catch(e) {}
 
-      // 立即尝试获取端口
-      const port = await invoke('get_gateway_port');
       if (port > 0) {
-        portKnown = true;
-        // 端口已知，轮询等待HTTP就绪
+        // 端口已知，轮询HTTP就绪
         const url = `http://127.0.0.1:${port}`;
         const checkReady = async () => {
           try {
@@ -178,8 +189,15 @@
           setTimeout(checkReady, 500);
         };
         checkReady();
+      } else {
+        // 端口未知（极端情况），invoke幂等启动
+        try {
+          const result = await invoke('start_gateway');
+          console.log('[gateway] start result:', result);
+        } catch(e) {
+          console.error('[gateway] invoke failed:', e);
+        }
       }
-
     } catch (err) {
       console.error('Init failed:', err);
       showError(String(err));
@@ -191,7 +209,7 @@
       setTimeout(() => {
         splash.classList.add('hidden');
         frame.classList.add('show');
-      }, 500);
+      }, 400);
     }
   });
 
