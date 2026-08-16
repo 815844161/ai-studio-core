@@ -186,8 +186,8 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
                         if count <= 3 {
                             log_to_file(&ad, &format!("网关异常退出，3秒后自动重启（第{}次）", count));
                             let a = app_h.clone();
-                            tauri::async_runtime::spawn(async move {
-                                tokio::time::sleep(Duration::from_secs(3)).await;
+                            std::thread::spawn(move || {
+                                std::thread::sleep(Duration::from_secs(3));
                                 let _ = start_gateway_internal(&a);
                             });
                         } else {
