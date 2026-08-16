@@ -419,8 +419,8 @@
     try {
       const base = `http://127.0.0.1:${wizPort}`;
       const channels = [
-        { name: 'DeepSeek Chat', models: 'deepseek-chat' },
-        { name: 'DeepSeek Reasoner', models: 'deepseek-reasoner' }
+        { name: 'DeepSeek V4 Pro', models: 'deepseek-v4-pro' },
+        { name: 'DeepSeek V4 Flash', models: 'deepseek-v4-flash' }
       ];
       let ok = 0;
       for (const ch of channels) {
@@ -435,7 +435,6 @@
         if (d.success) ok++;
       }
       if (ok === 0) throw new Error('渠道创建失败，请检查 Key');
-      localStorage.setItem('aiwarroom_onboarded', 'done');
       localStorage.setItem('aiwarroom_onboarded', 'done');
       wizShow('wiz-step-done');
       setTimeout(() => {
