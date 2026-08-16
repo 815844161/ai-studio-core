@@ -242,8 +242,13 @@ fn dashboard_url() -> String {
     }
 }
 
-/// 在Tauri内嵌窗口中打开管理面板（必须在独立线程中调用，避免Windows同步命令死锁）
-fn open_dashboard_window(app: &tauri::AppHandle) -> Result<(), String> {
+/// v0.4.2修复：async命令中直接创建窗口，不使用spawn_blocking。
+/// Tauri 2 Windows已知bug：同步命令中WebviewWindowBuilder.build()会死锁。
+/// 官方推荐做法：async fn + 直接调用build()，async命令在线程池上运行，
+/// 主线程消息泵保持畅通，WebView2可正常初始化。
+#[tauri::command]
+async fn open_dashboard(app: tauri::AppHandle) -> Result<(), String> {
+    let _ = start_gateway_internal(&app);
     let url = dashboard_url();
     let app_data = app.path().app_data_dir().unwrap_or_default();
     log_to_file(&app_data, &format!("打开管理面板(内嵌): {}", url));
@@ -256,7 +261,7 @@ fn open_dashboard_window(app: &tauri::AppHandle) -> Result<(), String> {
     }
 
     let url_parsed: tauri::Url = url.parse().map_err(|e| format!("URL解析失败: {}", e))?;
-    match WebviewWindowBuilder::new(app, "dashboard", WebviewUrl::External(url_parsed))
+    match WebviewWindowBuilder::new(&app, "dashboard", WebviewUrl::External(url_parsed))
         .title("AI作战室 - 管理面板")
         .inner_size(1200.0, 800.0)
         .min_inner_size(900.0, 600.0)
@@ -271,21 +276,10 @@ fn open_dashboard_window(app: &tauri::AppHandle) -> Result<(), String> {
         }
         Err(e) => {
             log_to_file(&app_data, &format!("内嵌窗口创建失败，回退浏览器: {}", e));
-            let _ = start_gateway_internal(app);
+            let _ = start_gateway_internal(&app);
             open_in_browser(&url).map_err(|e2| format!("内嵌失败({})，浏览器也失败: {}", e, e2))
         }
     }
-}
-
-/// v0.4.1修复：改为async命令，在spawn_blocking线程中创建窗口
-/// 修复Tauri 2 Windows已知bug：同步命令中WebviewWindowBuilder.build()死锁
-#[tauri::command]
-async fn open_dashboard(app: tauri::AppHandle) -> Result<(), String> {
-    let _ = start_gateway_internal(&app);
-    let app_clone = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        open_dashboard_window(&app_clone)
-    }).await.map_err(|e| format!("窗口创建任务失败: {}", e))?
 }
 
 #[tauri::command]
@@ -343,9 +337,34 @@ pub fn run() {
                         if let Some(w) = app.get_webview_window("main") { let _ = w.show(); let _ = w.set_focus(); }
                     }
                     "dashboard" => {
+                        // v0.4.2: 托盘菜单用tauri::async_runtime::spawn，不用std::thread::spawn
                         let app_clone = app.clone();
-                        std::thread::spawn(move || {
-                            let _ = open_dashboard_window(&app_clone);
+                        tauri::async_runtime::spawn(async move {
+                            let url = dashboard_url();
+                            let app_data = app_clone.path().app_data_dir().unwrap_or_default();
+                            log_to_file(&app_data, &format!("托盘打开管理面板(内嵌): {}", url));
+                            if let Some(existing) = app_clone.get_webview_window("dashboard") {
+                                let _ = existing.show();
+                                let _ = existing.set_focus();
+                                return;
+                            }
+                            if let Ok(url_parsed) = url.parse::<tauri::Url>() {
+                                match WebviewWindowBuilder::new(&app_clone, "dashboard", WebviewUrl::External(url_parsed))
+                                    .title("AI作战室 - 管理面板")
+                                    .inner_size(1200.0, 800.0)
+                                    .min_inner_size(900.0, 600.0)
+                                    .resizable(true)
+                                    .center()
+                                    .visible(true)
+                                    .build()
+                                {
+                                    Ok(_) => log_to_file(&app_data, "托盘: 管理面板内嵌窗口已创建"),
+                                    Err(e) => {
+                                        log_to_file(&app_data, &format!("托盘: 内嵌窗口创建失败: {}", e));
+                                        let _ = open_in_browser(&url);
+                                    }
+                                }
+                            }
                         });
                     }
                     "restart" => {
