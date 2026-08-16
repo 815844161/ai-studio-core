@@ -1,22 +1,33 @@
-use tauri::{Emitter, Manager, tray::{TrayIconBuilder, MouseButton, MouseButtonState}};
+use tauri::{Emitter, Manager, WindowEvent, tray::{TrayIconBuilder, MouseButton, MouseButtonState}};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
-use std::sync::atomic::{AtomicU16, AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU16, AtomicBool, AtomicU8, Ordering};
 use std::sync::Mutex;
 use std::net::TcpStream;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 static GATEWAY_PORT: AtomicU16 = AtomicU16::new(0);
 static STARTING: AtomicBool = AtomicBool::new(false);
+static SUPPRESS_RESTART: AtomicBool = AtomicBool::new(false);
+static CRASH_COUNT: AtomicU8 = AtomicU8::new(0);
+
 struct GatewayChild(Mutex<Option<tauri_plugin_shell::process::CommandChild>>);
+
+impl Drop for GatewayChild {
+    fn drop(&mut self) {
+        if let Ok(mut guard) = self.0.lock() {
+            if let Some(child) = guard.take() {
+                let _ = child.kill();
+            }
+        }
+    }
+}
 
 /// 优先使用3000端口，被占用则找一个可用端口
 fn find_gateway_port() -> u16 {
-    // 先试3000
     if std::net::TcpListener::bind("127.0.0.1:3000").is_ok() {
         return 3000;
     }
-    // 3000被占用，找随机端口
     if let Ok(listener) = std::net::TcpListener::bind("127.0.0.1:0") {
         if let Ok(addr) = listener.local_addr() {
             return addr.port();
@@ -25,7 +36,6 @@ fn find_gateway_port() -> u16 {
     3000
 }
 
-/// 检查端口是否正在监听
 fn port_is_listening(port: u16) -> bool {
     TcpStream::connect_timeout(
         &format!("127.0.0.1:{}", port).parse().unwrap(),
@@ -33,7 +43,6 @@ fn port_is_listening(port: u16) -> bool {
     ).is_ok()
 }
 
-/// 等待端口就绪
 fn wait_for_port(port: u16, timeout_secs: u64) -> bool {
     let start = std::time::Instant::now();
     while start.elapsed().as_secs() < timeout_secs {
@@ -45,10 +54,19 @@ fn wait_for_port(port: u16, timeout_secs: u64) -> bool {
     false
 }
 
-/// 北京时间时间戳
+/// 等待端口释放（用于重启）
+fn wait_for_port_release(port: u16, timeout_secs: u64) {
+    let start = std::time::Instant::now();
+    while start.elapsed().as_secs() < timeout_secs {
+        if !port_is_listening(port) {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(200));
+    }
+}
+
 fn beijing_timestamp() -> String {
     let secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-    // UTC+8
     let bj_secs = secs + 8 * 3600;
     let days = (bj_secs / 86400) as i64;
     let time_of_day = bj_secs % 86400;
@@ -58,7 +76,6 @@ fn beijing_timestamp() -> String {
     format!("{}D {:02}:{:02}:{:02}", days, h, m, s)
 }
 
-/// 写日志到文件（UTF-8）
 fn log_to_file(app_data: &std::path::Path, msg: &str) {
     let log_dir = app_data.join("logs");
     let _ = std::fs::create_dir_all(&log_dir);
@@ -71,27 +88,23 @@ fn log_to_file(app_data: &std::path::Path, msg: &str) {
         .and_then(|mut f| std::io::Write::write_all(&mut f, line.as_bytes()));
 }
 
-/// 杀掉已有的gateway子进程
 fn kill_existing_gateway(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<GatewayChild>() {
-        let mut guard = state.0.lock().unwrap();
-        if let Some(child) = guard.take() {
-            let _ = child.kill();
+        if let Ok(mut guard) = state.0.lock() {
+            if let Some(child) = guard.take() {
+                let _ = child.kill();
+            }
         }
     }
 }
 
-/// 启动One API网关
 fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
-    // 已在运行，直接返回端口
     let existing_port = GATEWAY_PORT.load(Ordering::SeqCst);
     if existing_port != 0 && port_is_listening(existing_port) {
         return Ok(existing_port);
     }
 
-    // 防止并发重复启动
     if STARTING.load(Ordering::SeqCst) {
-        // 等待其他线程启动完成
         for _ in 0..50 {
             std::thread::sleep(Duration::from_millis(100));
             let p = GATEWAY_PORT.load(Ordering::SeqCst);
@@ -102,11 +115,9 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
         return Err("网关正在启动中，请稍候".to_string());
     }
     STARTING.store(true, Ordering::SeqCst);
-
-    // 重置端口
+    SUPPRESS_RESTART.store(false, Ordering::SeqCst);
     GATEWAY_PORT.store(0, Ordering::SeqCst);
 
-    // 杀掉可能残留的子进程
     kill_existing_gateway(app);
 
     let port = find_gateway_port();
@@ -142,12 +153,12 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
             msg
         })?;
 
-    // 保存child句柄，防止被drop导致进程被杀
     if let Some(state) = app.try_state::<GatewayChild>() {
-        *state.0.lock().unwrap() = Some(child);
+        if let Ok(mut guard) = state.0.lock() {
+            *guard = Some(child);
+        }
     }
 
-    // 监听sidecar输出
     let app_handle = app.clone();
     let app_data_clone = app_data.clone();
     tauri::async_runtime::spawn(async move {
@@ -159,6 +170,7 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
                     log_to_file(&app_data_clone, &format!("[stdout] {}", trimmed));
                     let _ = app_handle.emit("gateway-stdout", text.clone());
                     if trimmed.contains("server started") || trimmed.contains("listening") {
+                        CRASH_COUNT.store(0, Ordering::SeqCst);
                         let _ = app_handle.emit("gateway-ready", format!("http://127.0.0.1:{}", port));
                     }
                 }
@@ -168,6 +180,7 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
                     log_to_file(&app_data_clone, &format!("[stderr] {}", trimmed));
                     let _ = app_handle.emit("gateway-stderr", text.clone());
                     if trimmed.contains("server started") || trimmed.contains("listening") {
+                        CRASH_COUNT.store(0, Ordering::SeqCst);
                         let _ = app_handle.emit("gateway-ready", format!("http://127.0.0.1:{}", port));
                     }
                 }
@@ -181,13 +194,28 @@ fn start_gateway_internal(app: &tauri::AppHandle) -> Result<u16, String> {
                     let _ = app_handle.emit("gateway-exit", code);
                     GATEWAY_PORT.store(0, Ordering::SeqCst);
                     STARTING.store(false, Ordering::SeqCst);
+
+                    // 非正常退出且非手动停止，自动重启
+                    if !SUPPRESS_RESTART.load(Ordering::SeqCst) && code != 0 {
+                        let count = CRASH_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
+                        if count <= 3 {
+                            log_to_file(&app_data_clone, &format!("网关异常退出，3秒后自动重启（第{}次）", count));
+                            let app3 = app_handle.clone();
+                            tauri::async_runtime::spawn(async move {
+                                tokio::time::sleep(Duration::from_secs(3)).await;
+                                let _ = start_gateway_internal(&app3);
+                            });
+                        } else {
+                            log_to_file(&app_data_clone, "网关连续崩溃3次，停止自动重启");
+                            let _ = app_handle.emit("gateway-error", "网关连续崩溃，请检查日志后手动重启。");
+                        }
+                    }
                 }
                 _ => {}
             }
         }
     });
 
-    // 后台线程等待端口就绪
     let app_handle2 = app.clone();
     let app_data2 = app_data.clone();
     std::thread::spawn(move || {
@@ -217,6 +245,11 @@ fn get_gateway_port() -> u16 {
     GATEWAY_PORT.load(Ordering::SeqCst)
 }
 
+#[tauri::command]
+fn get_app_version(app: tauri::AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -225,17 +258,22 @@ pub fn run() {
         .manage(GatewayChild(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             start_gateway,
-            get_gateway_port
+            get_gateway_port,
+            get_app_version
         ])
+        .on_window_event(|window, event| {
+            // 点关闭按钮时最小化到托盘，不退出
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                let _ = window.hide();
+                api.prevent_close();
+            }
+        })
         .setup(|app| {
-            // 在setup阶段直接启动网关，不依赖前端
             let app_handle = app.handle().clone();
             if let Err(e) = start_gateway_internal(&app_handle) {
                 eprintln!("启动网关失败: {}", e);
             }
 
-            // 托盘图标
-            let app_handle_tray = app.handle().clone();
             let _tray = TrayIconBuilder::with_id("main-tray")
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("AI作战室")
@@ -255,17 +293,20 @@ pub fn run() {
                         }
                     }
                     "restart" => {
+                        SUPPRESS_RESTART.store(true, Ordering::SeqCst);
+                        kill_existing_gateway(app);
                         GATEWAY_PORT.store(0, Ordering::SeqCst);
                         STARTING.store(false, Ordering::SeqCst);
-                        kill_existing_gateway(app);
-                        let app = app.clone();
+                        let app2 = app.clone();
                         std::thread::spawn(move || {
-                            // 等端口释放
-                            std::thread::sleep(Duration::from_secs(2));
-                            let _ = start_gateway_internal(&app);
+                            wait_for_port_release(3000, 3);
+                            std::thread::sleep(Duration::from_millis(500));
+                            let _ = start_gateway_internal(&app2);
                         });
                     }
                     "quit" => {
+                        SUPPRESS_RESTART.store(true, Ordering::SeqCst);
+                        kill_existing_gateway(app);
                         app.exit(0);
                     }
                     _ => {}
